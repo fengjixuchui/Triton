@@ -35,6 +35,9 @@ namespace triton {
       // Collect used symbolic variables.
       auto vars = triton::ast::search(node, triton::ast::VARIABLE_NODE);
 
+      //! Sort symbolic variables
+      std::sort(vars.begin(), vars.end());
+
       // Each symbolic variable is a function argument
       std::vector<llvm::Type*> argsType;
       argsType.resize(vars.size());
@@ -78,7 +81,7 @@ namespace triton {
     }
 
 
-    std::shared_ptr<llvm::Module> TritonToLLVM::convert(const triton::ast::SharedAbstractNode& node, const char* fname) {
+    std::shared_ptr<llvm::Module> TritonToLLVM::convert(const triton::ast::SharedAbstractNode& node, const char* fname, bool optimize) {
       std::unordered_map<triton::ast::SharedAbstractNode, llvm::Value*> results;
 
       /* Create the LLVM function */
@@ -94,6 +97,16 @@ namespace triton {
 
       /* Create the return instruction */
       this->llvmIR.CreateRet(results.at(node));
+
+      /* Apply LLVM optimizations (-03 -Oz) if enabled */
+      if (optimize) {
+        llvm::legacy::PassManager pm;
+        llvm::PassManagerBuilder pmb;
+        pmb.OptLevel = 3;
+        pmb.SizeLevel = 2;
+        pmb.populateModulePassManager(pm);
+        pm.run(*this->llvmModule);
+      }
 
       return this->llvmModule;
     }

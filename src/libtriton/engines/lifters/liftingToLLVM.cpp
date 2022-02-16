@@ -9,8 +9,13 @@
 #include <ostream>
 #include <string>
 
+#include <triton/astContext.hpp>
 #include <triton/liftingToLLVM.hpp>
+#include <triton/llvmToTriton.hpp>
 #include <triton/tritonToLLVM.hpp>
+
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
 
 
 
@@ -22,13 +27,13 @@ namespace triton {
       }
 
 
-      std::ostream& LiftingToLLVM::liftToLLVM(std::ostream& stream, const triton::engines::symbolic::SharedSymbolicExpression& expr) {
-        this->liftToLLVM(stream, expr->getAst());
+      std::ostream& LiftingToLLVM::liftToLLVM(std::ostream& stream, const triton::engines::symbolic::SharedSymbolicExpression& expr, const char* fname, bool optimize) {
+        this->liftToLLVM(stream, expr->getAst(), fname, optimize);
         return stream;
       }
 
 
-      std::ostream& LiftingToLLVM::liftToLLVM(std::ostream& stream, const triton::ast::SharedAbstractNode& node) {
+      std::ostream& LiftingToLLVM::liftToLLVM(std::ostream& stream, const triton::ast::SharedAbstractNode& node, const char* fname, bool optimize) {
         /* The LLVM context */
         llvm::LLVMContext context;
 
@@ -36,7 +41,7 @@ namespace triton {
         triton::ast::TritonToLLVM lifter(context);
 
         /* Lift AST to LLVM IR */
-        auto llvmModule = lifter.convert(node);
+        auto llvmModule = lifter.convert(node, fname, optimize);
 
         /* Print the LLVM module into the stream */
         std::string dump;
@@ -45,6 +50,17 @@ namespace triton {
         stream << dump;
 
         return stream;
+      }
+
+
+      triton::ast::SharedAbstractNode LiftingToLLVM::simplifyAstViaLLVM(const triton::ast::SharedAbstractNode& node) const {
+        llvm::LLVMContext context;
+
+        triton::ast::TritonToLLVM ttllvm(context);
+        triton::ast::LLVMToTriton llvmtt(node->getContext());
+
+        auto llvmModule = ttllvm.convert(node, "__tmp", true);  /* from triton to llvm */
+        return llvmtt.convert(llvmModule.get(), "__tmp");       /* from llvm to triton */
       }
 
     }; /* lifters namespace */

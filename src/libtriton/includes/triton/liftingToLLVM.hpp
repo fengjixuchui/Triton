@@ -16,10 +16,6 @@
 #include <triton/dllexport.hpp>
 #include <triton/symbolicExpression.hpp>
 
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Module.h>
-
 
 
 //! The Triton namespace
@@ -52,11 +48,14 @@ namespace triton {
           //! Constructor.
           TRITON_EXPORT LiftingToLLVM();
 
-          //! Lifts a symbolic expression and all its references to LLVM format.
-          TRITON_EXPORT std::ostream& liftToLLVM(std::ostream& stream, const triton::engines::symbolic::SharedSymbolicExpression& expr);
+          //! Lifts a symbolic expression and all its references to LLVM format. `fname` represents the name of the LLVM function.
+          TRITON_EXPORT std::ostream& liftToLLVM(std::ostream& stream, const triton::engines::symbolic::SharedSymbolicExpression& expr, const char* fname="__triton", bool optimize=false);
 
-          //! Lifts a abstract node and all its references to LLVM format.
-          TRITON_EXPORT std::ostream& liftToLLVM(std::ostream& stream, const triton::ast::SharedAbstractNode& node);
+          //! Lifts a abstract node and all its references to LLVM format. `fname` represents the name of the LLVM function.
+          TRITON_EXPORT std::ostream& liftToLLVM(std::ostream& stream, const triton::ast::SharedAbstractNode& node, const char* fname="__triton", bool optimize=false);
+
+          //! Lifts and simplify an AST using LLVM
+          TRITON_EXPORT triton::ast::SharedAbstractNode simplifyAstViaLLVM(const triton::ast::SharedAbstractNode& node) const;
       };
 
     /*! @} End of lifters namespace */
