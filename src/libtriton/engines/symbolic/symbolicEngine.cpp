@@ -35,7 +35,6 @@ namespace triton {
 
         this->architecture      = architecture;
         this->callbacks         = callbacks;
-        this->enableFlag        = true;
         this->numberOfRegisters = this->architecture->numberOfRegisters();
         this->uniqueSymExprId   = 0;
         this->uniqueSymVarId    = 0;
@@ -50,17 +49,16 @@ namespace triton {
           astCtxt(other.astCtxt),
           modes(other.modes) {
 
-        this->alignedMemoryReference      = other.alignedMemoryReference;
-        this->architecture                = other.architecture;
-        this->callbacks                   = other.callbacks;
-        this->enableFlag                  = other.enableFlag;
-        this->memoryReference             = other.memoryReference;
-        this->numberOfRegisters           = other.numberOfRegisters;
-        this->symbolicExpressions         = other.symbolicExpressions;
-        this->symbolicReg                 = other.symbolicReg;
-        this->symbolicVariables           = other.symbolicVariables;
-        this->uniqueSymExprId             = other.uniqueSymExprId;
-        this->uniqueSymVarId              = other.uniqueSymVarId;
+        this->alignedMemoryReference = other.alignedMemoryReference;
+        this->architecture           = other.architecture;
+        this->callbacks              = other.callbacks;
+        this->memoryReference        = other.memoryReference;
+        this->numberOfRegisters      = other.numberOfRegisters;
+        this->symbolicExpressions    = other.symbolicExpressions;
+        this->symbolicReg            = other.symbolicReg;
+        this->symbolicVariables      = other.symbolicVariables;
+        this->uniqueSymExprId        = other.uniqueSymExprId;
+        this->uniqueSymVarId         = other.uniqueSymVarId;
       }
 
 
@@ -75,19 +73,18 @@ namespace triton {
         triton::engines::symbolic::SymbolicSimplification::operator=(other);
         triton::engines::symbolic::PathManager::operator=(other);
 
-        this->alignedMemoryReference      = other.alignedMemoryReference;
-        this->architecture                = other.architecture;
-        this->astCtxt                     = other.astCtxt;
-        this->callbacks                   = other.callbacks;
-        this->enableFlag                  = other.enableFlag;
-        this->memoryReference             = other.memoryReference;
-        this->modes                       = other.modes;
-        this->numberOfRegisters           = other.numberOfRegisters;
-        this->symbolicExpressions         = other.symbolicExpressions;
-        this->symbolicReg                 = other.symbolicReg;
-        this->symbolicVariables           = other.symbolicVariables;
-        this->uniqueSymExprId             = other.uniqueSymExprId;
-        this->uniqueSymVarId              = other.uniqueSymVarId;
+        this->alignedMemoryReference = other.alignedMemoryReference;
+        this->architecture           = other.architecture;
+        this->astCtxt                = other.astCtxt;
+        this->callbacks              = other.callbacks;
+        this->memoryReference        = other.memoryReference;
+        this->modes                  = other.modes;
+        this->numberOfRegisters      = other.numberOfRegisters;
+        this->symbolicExpressions    = other.symbolicExpressions;
+        this->symbolicReg            = other.symbolicReg;
+        this->symbolicVariables      = other.symbolicVariables;
+        this->uniqueSymExprId        = other.uniqueSymExprId;
+        this->uniqueSymVarId         = other.uniqueSymVarId;
 
         return *this;
       }
@@ -376,6 +373,7 @@ namespace triton {
           if (node->getType() == triton::ast::ZX_NODE || node->getType() == triton::ast::SX_NODE) {
             auto n = node->getChildren()[1];
             if (n->getType() != triton::ast::REFERENCE_NODE && n->getType() != triton::ast::VARIABLE_NODE) {
+              /* FIXME: We lost the origin if we create a new symbolic expression without returning it */
               auto e = this->newSymbolicExpression(n, VOLATILE_EXPRESSION, "Extended part - " + comment);
               node->setChild(1, this->astCtxt->reference(e));
             }
@@ -913,12 +911,9 @@ namespace triton {
         triton::uint32 writeSize            = mem.getSize();
         triton::usize id                    = this->uniqueSymExprId;
 
-        std::stringstream s;
-        s << comment << (comment.empty() ? "" : " - ") << inst;
-
         /* Record the aligned memory for a symbolic optimization */
         if (this->modes->isModeEnabled(triton::modes::ALIGNED_MEMORY)) {
-          const SharedSymbolicExpression& aligned = this->newSymbolicExpression(node, MEMORY_EXPRESSION, "Aligned Byte reference - " + s.str());
+          const SharedSymbolicExpression& aligned = this->newSymbolicExpression(node, MEMORY_EXPRESSION, "Aligned Byte reference - " + comment);
           this->addAlignedMemory(address, writeSize, aligned);
         }
 
@@ -933,7 +928,7 @@ namespace triton {
           /* Extract each byte of the memory */
           tmp = this->astCtxt->extract(high, low, node);
           /* Assign each byte to a new symbolic expression */
-          se = this->newSymbolicExpression(tmp, MEMORY_EXPRESSION, "Byte reference - " + s.str());
+          se = this->newSymbolicExpression(tmp, MEMORY_EXPRESSION, "Byte reference - " + comment);
           /* Set the origin of the symbolic expression */
           se->setOriginMemory(triton::arch::MemoryAccess(((address + writeSize) - 1), triton::size::byte));
           /* ret is the for the final expression */
@@ -963,7 +958,7 @@ namespace triton {
         /* Synchronize the concrete state */
         this->architecture->setConcreteMemoryValue(mem, tmp->evaluate());
 
-        se = this->newSymbolicExpression(tmp, MEMORY_EXPRESSION, "Temporary concatenation reference - " + s.str());
+        se = this->newSymbolicExpression(tmp, MEMORY_EXPRESSION, "Temporary concatenation reference - " + comment);
         se->setOriginMemory(triton::arch::MemoryAccess(address, mem.getSize()));
 
         return this->addSymbolicExpressions(inst, id);
@@ -1040,10 +1035,7 @@ namespace triton {
         triton::usize id = this->uniqueSymExprId;
         SharedSymbolicExpression se = nullptr;
 
-        std::stringstream s;
-        s << comment << (comment.empty() ? "" : " - ") << inst;
-
-        se = this->newSymbolicExpression(this->insertSubRegisterInParent(reg, node), REGISTER_EXPRESSION, s.str());
+        se = this->newSymbolicExpression(this->insertSubRegisterInParent(reg, node), REGISTER_EXPRESSION, comment);
         this->assignSymbolicExpressionToRegister(se, this->architecture->getParentRegister(reg));
 
         inst.setWrittenRegister(reg, node);
@@ -1054,11 +1046,7 @@ namespace triton {
       /* Returns the new symbolic volatile expression */
       const SharedSymbolicExpression& SymbolicEngine::createSymbolicVolatileExpression(triton::arch::Instruction& inst, const triton::ast::SharedAbstractNode& node, const std::string& comment) {
         triton::usize id = this->uniqueSymExprId;
-
-        std::stringstream s;
-        s << comment << (comment.empty() ? "" : " - ") << inst;
-
-        const SharedSymbolicExpression& se = this->newSymbolicExpression(node, VOLATILE_EXPRESSION, s.str());
+        const SharedSymbolicExpression& se = this->newSymbolicExpression(node, VOLATILE_EXPRESSION, comment);
         return this->addSymbolicExpressions(inst, id);
       }
 
@@ -1136,12 +1124,6 @@ namespace triton {
       }
 
 
-      /* Returns true if the symbolic engine is enable */
-      bool SymbolicEngine::isEnabled(void) const {
-        return this->enableFlag;
-      }
-
-
       /* Returns true if the symbolic expression ID exists */
       bool SymbolicEngine::isSymbolicExpressionExists(triton::usize symExprId) const {
         auto it = this->symbolicExpressions.find(symExprId);
@@ -1182,12 +1164,6 @@ namespace triton {
           return expr->isSymbolized();
         }
         return false;
-      }
-
-
-      /* Enables or disables the symbolic engine */
-      void SymbolicEngine::enable(bool flag) {
-        this->enableFlag = flag;
       }
 
 

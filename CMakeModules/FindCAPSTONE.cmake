@@ -27,10 +27,6 @@ if(NOT CAPSTONE_INCLUDE_DIRS AND NOT CAPSTONE_LIBRARIES)
       PATHS ${CAPSTONE_PKGCONF_INCLUDE_DIRS}
     )
 
-    if(NOT BUILD_SHARED_LIBS)
-        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-    endif()
-
     find_library(CAPSTONE_LIBRARY
       NAMES capstone
       PATHS ${CAPSTONE_PKGCONF_LIBRARY_DIRS}
@@ -45,6 +41,10 @@ if(NOT CAPSTONE_INCLUDE_DIRS AND NOT CAPSTONE_LIBRARIES)
 
     if(NOT CAPSTONE_FOUND)
         message(FATAL_ERROR "Capstone not found")
+    else()
+        cmake_path(GET CAPSTONE_LIBRARY PARENT_PATH CAPSTONE_LIB_DIR)
+        cmake_path(GET CAPSTONE_LIBRARY STEM LAST_ONLY CAPSTONE_LIB_NAME)
+        string(REGEX REPLACE "^lib" "" CAPSTONE_LIB_NAME ${CAPSTONE_LIB_NAME})
     endif()
 else()
     message(STATUS "Capstone includes directory defined: ${CAPSTONE_INCLUDE_DIRS}")

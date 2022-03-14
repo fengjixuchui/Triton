@@ -42,6 +42,7 @@ set(LIBTRITON_SOURCE_FILES
     ast/representations/astRepresentation.cpp
     ast/representations/astSmtRepresentation.cpp
     callbacks/callbacks.cpp
+    engines/lifters/liftingToDot.cpp
     engines/lifters/liftingToPython.cpp
     engines/lifters/liftingToSMT.cpp
     engines/solver/solverEngine.cpp
@@ -96,6 +97,7 @@ set(LIBTRITON_HEADER_FILES
     includes/triton/instruction.hpp
     includes/triton/irBuilder.hpp
     includes/triton/liftingEngine.hpp
+    includes/triton/liftingToDot.hpp
     includes/triton/liftingToLLVM.hpp
     includes/triton/liftingToPython.hpp
     includes/triton/liftingToSMT.hpp
@@ -324,10 +326,15 @@ if(PYTHON_BINDINGS)
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${CMAKE_SHARED_MODULE_PREFIX}triton${CMAKE_SHARED_LIBRARY_SUFFIX}" "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/triton${PYTHON_SUFFIX}"
         DEPENDS triton
     )
-    execute_process (COMMAND ${PYTHON_EXECUTABLE} -c "from sysconfig import get_path; print(get_path('platlib'))" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
-    if(${CMAKE_SYSTEM_NAME} MATCHES "Windows" AND NOT ${CMAKE_CXX_COMPILER_ID} MATCHES "GNU")
-        install (FILES ${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}/triton${PYTHON_SUFFIX} DESTINATION ${PYTHON_SITE_PACKAGES})
+    if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+        execute_process (COMMAND ${PYTHON_EXECUTABLE} -c "from sysconfig import get_path; print(get_path('platlib'))" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if(${CMAKE_SYSTEM_NAME} MATCHES "Windows" AND NOT ${CMAKE_CXX_COMPILER_ID} MATCHES "GNU")
+            install (FILES ${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}/triton${PYTHON_SUFFIX} DESTINATION ${PYTHON_SITE_PACKAGES})
+        else()
+            install (FILES ${CMAKE_CURRENT_BINARY_DIR}/triton${PYTHON_SUFFIX} DESTINATION ${PYTHON_SITE_PACKAGES})
+        endif()
     else()
-        install (FILES ${CMAKE_CURRENT_BINARY_DIR}/triton${PYTHON_SUFFIX} DESTINATION ${PYTHON_SITE_PACKAGES})
+        execute_process (COMMAND ${PYTHON_EXECUTABLE} -c "from sys import version_info; print(f'lib/python{version_info[0]}.{version_info[1]}/site-packages')" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
+        install (FILES ${CMAKE_CURRENT_BINARY_DIR}/triton${PYTHON_SUFFIX} DESTINATION ${CMAKE_INSTALL_PREFIX}/${PYTHON_SITE_PACKAGES})
     endif()
 endif()

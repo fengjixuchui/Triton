@@ -23,7 +23,7 @@
 
 \section description_sec Description
 
-<b>Triton</b> is a dynamic binary analysis framework. It provides internal components like a
+<b>Triton</b> is a dynamic binary analysis library. It provides internal components like a
 <b>dynamic symbolic execution</b> engine, a <b>dynamic taint analysis</b> engine, <b>AST representation</b> of the
 <b>x86</b>, <b>x86-64</b>, <b>ARM32</b> and <b>AArch64</b> ISA semantic, an <b>expressions synthesis</b> engine,
 some <b>SMT simplification</b> passes, <b>SMT solver</b> interface to <b>Z3</b> and <b>Bitwuzla</b> and, the last
@@ -157,77 +157,6 @@ automate reverse engineering, perform software verification or just emulate code
  target function is covered.</em>
 </li>
 </ul>
-
-
-<br>
-<hr>
-\section install_sec Installation
-
-To be able to compile Triton, you must install these libraries before:
-
- lib name                                                                      | version
--------------------------------------------------------------------------------|------------------
- [libboost](http://www.boost.org/)                                             | >= 1.68
- [libpython](https://www.python.org/)                                          | >= 3.6
- [libz3](https://github.com/Z3Prover/z3)                                       | >= 4.6.0
- [libcapstone](http://www.capstone-engine.org/)                                | >= 4.0.x
-
-<br>
-<hr>
-\subsection linux_install_sec Linux Installation
-
-Once the libraries are installed, you can use `cmake` and `make` to build `libTriton`.
-
-~~~~~~~~~~~~~{.sh}
-$ git clone https://github.com/JonathanSalwan/Triton.git
-$ cd Triton
-$ mkdir build
-$ cd build
-$ cmake ..
-$ sudo make -j2 install
-~~~~~~~~~~~~~
-
-<br>
-<hr>
-\subsection osx_install_sec OSX Installation
-
-On OSX `cmake` might have some difficulties finding the correct Python include/library paths.
-You can run the following to build independent of your Python version:
-
-~~~~~~~~~~~~~{.sh}
-$ brew install boost capstone z3
-$ git clone https://github.com/JonathanSalwan/Triton.git
-$ cd Triton
-$ mkdir build
-$ cd build
-$ cmake $(echo 'from os.path import abspath, join; from sysconfig import get_path; print("-DPYTHON_INCLUDE_DIR=%s -DPYTHON_LIBRARY=%s" % (get_path("include"), abspath(join(get_path("platlib"), "../../libpython3.7.dylib"))))' | python3) ..
-$ sudo make -j2 install
-~~~~~~~~~~~~~
-
-<br>
-<hr>
-\subsection windows_install_sec Windows Installation
-
-Once libraries installed, you can use `cmake` to generate the `.sln` file of `libTriton`.
-
-~~~~~~~~~~~~~{.sh}
-> git clone https://github.com/JonathanSalwan/Triton.git
-> cd Triton
-> mkdir build
-> cd build
-> cmake -G "Visual Studio 14 2015 Win64" \
-  -DBOOST_ROOT="C:/Users/jonathan/Works/Tools/boost_1_61_0" \
-  -DPYTHON_INCLUDE_DIRS="C:/Python36/include" \
-  -DPYTHON_LIBRARIES="C:/Python36/libs/python36.lib" \
-  -DZ3_INCLUDE_DIRS="C:/Users/jonathan/Works/Tools/z3-4.6.0-x64-win/include" \
-  -DZ3_LIBRARIES="C:/Users/jonathan/Works/Tools/z3-4.6.0-x64-win/bin/libz3.lib" \
-  -DCAPSTONE_INCLUDE_DIRS="C:/Users/jonathan/Works/Tools/capstone-4.0.2-win64/include" \
-  -DCAPSTONE_LIBRARIES="C:/Users/jonathan/Works/Tools/capstone-4.0.2-win64/capstone.lib" ..
-~~~~~~~~~~~~~
-
-However, if you prefer to directly download precompiled libraries, check out our [AppVeyor's artefacts](https://ci.appveyor.com/project/JonathanSalwan/triton/history).
-Note that if you use AppVeyor's artefacts, you probably have to install the [Visual C++ Redistributable](https://www.microsoft.com/en-US/download/details.aspx?id=30679)
-packages for Visual Studio 2012.
 
 */
 
@@ -985,18 +914,6 @@ namespace triton {
   }
 
 
-  void API::enableSymbolicEngine(bool flag) {
-    this->checkSymbolic();
-    this->symbolic->enable(flag);
-  }
-
-
-  bool API::isSymbolicEngineEnabled(void) const {
-    this->checkSymbolic();
-    return this->symbolic->isEnabled();
-  }
-
-
   bool API::isSymbolicExpressionExists(triton::usize symExprId) const {
     this->checkSymbolic();
     return this->symbolic->isSymbolicExpressionExists(symExprId);
@@ -1183,18 +1100,6 @@ namespace triton {
   std::unordered_set<const triton::arch::Register*> API::getTaintedRegisters(void) const {
     this->checkTaint();
     return this->taint->getTaintedRegisters();
-  }
-
-
-  void API::enableTaintEngine(bool flag) {
-    this->checkTaint();
-    this->taint->enable(flag);
-  }
-
-
-  bool API::isTaintEngineEnabled(void) const {
-    this->checkTaint();
-    return this->taint->isEnabled();
   }
 
 
@@ -1398,6 +1303,18 @@ namespace triton {
   std::ostream& API::liftToSMT(std::ostream& stream, const triton::engines::symbolic::SharedSymbolicExpression& expr, bool assert_) {
     this->checkLifting();
     return this->lifting->liftToSMT(stream, expr, assert_);
+  }
+
+
+  std::ostream& API::liftToDot(std::ostream& stream, const triton::ast::SharedAbstractNode& node) {
+    this->checkLifting();
+    return this->lifting->liftToDot(stream, node);
+  }
+
+
+  std::ostream& API::liftToDot(std::ostream& stream, const triton::engines::symbolic::SharedSymbolicExpression& expr) {
+    this->checkLifting();
+    return this->lifting->liftToDot(stream, expr);
   }
 
 

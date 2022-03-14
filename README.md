@@ -1,6 +1,6 @@
 <p align="center"><img width="50%" src="http://triton.quarkslab.com/files/triton2.png"/></p>
 
-**Triton** is a dynamic binary analysis framework. It provides internal components like a **dynamic symbolic execution** engine,
+**Triton** is a dynamic binary analysis library. It provides internal components like a **dynamic symbolic execution** engine,
 a **dynamic taint analysis** engine, **AST representation** of the **x86**, **x86-64**, **ARM32** and **AArch64** ISA semantic,
 an **expressions synthesis** engine, some **SMT simplification** passes, **SMT solver** interface to **Z3** and **Bitwuzla**
 and, the last but not least, **Python bindings**. Based on these components, you are able to build your program analysis tools,
@@ -103,7 +103,7 @@ Triton relies on the following dependencies:
 
 ### Linux and OS X
 
-```
+```console
 $ git clone https://github.com/JonathanSalwan/Triton
 $ cd Triton
 $ mkdir build ; cd build
@@ -112,12 +112,18 @@ $ make -j3
 $ sudo make install
 ```
 
+By default, LLVM and Bitwuzla are not compiled. If you want to enjoy the full power of Triton, the cmake compile is:
+
+```console
+$ cmake -DLLVM_INTERFACE=ON -DCMAKE_PREFIX_PATH=$(llvm-config --prefix) -DBITWUZLA_INTERFACE=ON ..
+```
+
 
 ### Windows
 
 You can use cmake to generate the .sln file of libTriton.
 
-```
+```console
 > git clone https://github.com/JonathanSalwan/Triton.git
 > cd Triton
 > mkdir build

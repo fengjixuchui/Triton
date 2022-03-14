@@ -449,12 +449,6 @@ namespace triton {
         //! [**symbolic api**] - Clears the current path predicate.
         TRITON_EXPORT void clearPathConstraints(void);
 
-        //! [**symbolic api**] - Enables or disables the symbolic execution engine.
-        TRITON_EXPORT void enableSymbolicEngine(bool flag);
-
-        //! [**symbolic api**] - Returns true if the symbolic execution engine is enabled.
-        TRITON_EXPORT bool isSymbolicEngineEnabled(void) const;
-
         //! [**symbolic api**] - Returns true if the symbolic expression ID exists.
         TRITON_EXPORT bool isSymbolicExpressionExists(triton::usize symExprId) const;
 
@@ -574,12 +568,6 @@ namespace triton {
         //! [**taint api**] - Returns the tainted registers.
         TRITON_EXPORT std::unordered_set<const triton::arch::Register*> getTaintedRegisters(void) const;
 
-        //! [**taint api**] - Enables or disables the taint engine.
-        TRITON_EXPORT void enableTaintEngine(bool flag);
-
-        //! [**taint api**] - Returns true if the taint engine is enabled.
-        TRITON_EXPORT bool isTaintEngineEnabled(void) const;
-
         //! [**taint api**] - Abstract taint verification. Returns true if the operand is tainted.
         TRITON_EXPORT bool isTainted(const triton::arch::OperandWrapper& op) const;
 
@@ -683,6 +671,12 @@ namespace triton {
 
         //! [**lifting api**] - Lifts a symbolic expression and all its references to SMT format. If `assert_` is true, then (assert <expr>).
         TRITON_EXPORT std::ostream& liftToSMT(std::ostream& stream, const triton::engines::symbolic::SharedSymbolicExpression& expr, bool assert_);
+
+        //! [**lifting api**] - Lifts an AST and all its references to Dot format.
+        TRITON_EXPORT std::ostream& liftToDot(std::ostream& stream, const triton::ast::SharedAbstractNode& node);
+
+        //! [**lifting api**] - Lifts a symbolic expression and all its references to Dot format.
+        TRITON_EXPORT std::ostream& liftToDot(std::ostream& stream, const triton::engines::symbolic::SharedSymbolicExpression& expr);
 
         //! [**lifting api**] - Lifts and simplify an AST using LLVM
         TRITON_EXPORT triton::ast::SharedAbstractNode simplifyAstViaLLVM(const triton::ast::SharedAbstractNode& node) const;

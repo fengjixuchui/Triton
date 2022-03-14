@@ -38,21 +38,19 @@ namespace triton {
       if (taintEngine == nullptr)
         throw triton::exceptions::IrBuilder("IrBuilder::IrBuilder(): The taint engines API must be defined.");
 
-      this->architecture              = architecture;
-      this->backupSymbolicEngine      = new(std::nothrow) triton::engines::symbolic::SymbolicEngine(architecture, modes, astCtxt, nullptr);
-      this->symbolicEngine            = symbolicEngine;
-      this->taintEngine               = taintEngine;
-      this->aarch64Isa                = new(std::nothrow) triton::arch::arm::aarch64::AArch64Semantics(architecture, symbolicEngine, taintEngine, astCtxt);
-      this->arm32Isa                  = new(std::nothrow) triton::arch::arm::arm32::Arm32Semantics(architecture, symbolicEngine, taintEngine, astCtxt);
-      this->x86Isa                    = new(std::nothrow) triton::arch::x86::x86Semantics(architecture, symbolicEngine, taintEngine, modes, astCtxt);
+      this->architecture         = architecture;
+      this->symbolicEngine       = symbolicEngine;
+      this->taintEngine          = taintEngine;
+      this->aarch64Isa           = new(std::nothrow) triton::arch::arm::aarch64::AArch64Semantics(architecture, symbolicEngine, taintEngine, astCtxt);
+      this->arm32Isa             = new(std::nothrow) triton::arch::arm::arm32::Arm32Semantics(architecture, symbolicEngine, taintEngine, astCtxt);
+      this->x86Isa               = new(std::nothrow) triton::arch::x86::x86Semantics(architecture, symbolicEngine, taintEngine, modes, astCtxt);
 
-      if (this->x86Isa == nullptr || this->aarch64Isa == nullptr || this->backupSymbolicEngine == nullptr)
+      if (this->x86Isa == nullptr || this->aarch64Isa == nullptr || this->arm32Isa == nullptr)
         throw triton::exceptions::IrBuilder("IrBuilder::IrBuilder(): Not enough memory.");
     }
 
 
     IrBuilder::~IrBuilder() {
-      delete this->backupSymbolicEngine;
       delete this->aarch64Isa;
       delete this->arm32Isa;
       delete this->x86Isa;
@@ -107,7 +105,7 @@ namespace triton {
       /* Clear previous expressions if exist */
       inst.symbolicExpressions.clear();
 
-      /* Clear implicit and explicit semantics */
+      /* Clear implicit and explicit previous semantics */
       inst.getLoadAccess().clear();
       inst.getReadRegisters().clear();
       inst.getReadImmediates().clear();
@@ -118,76 +116,38 @@ namespace triton {
       if (!inst.getAddress()) {
         inst.setAddress(this->architecture->getConcreteRegisterValue(this->architecture->getProgramCounter()).convert_to<triton::uint64>());
       }
-
-      /* Backup the symbolic engine in the case where only the taint is available. */
-      if (!this->symbolicEngine->isEnabled()) {
-        *this->backupSymbolicEngine = *this->symbolicEngine;
-      }
     }
 
 
     void IrBuilder::postIrInit(triton::arch::Instruction& inst) {
       std::vector<triton::engines::symbolic::SharedSymbolicExpression> newVector;
 
-      auto& loadAccess        = inst.getLoadAccess();
-      auto& readRegisters     = inst.getReadRegisters();
-      auto& readImmediates    = inst.getReadImmediates();
-      auto& storeAccess       = inst.getStoreAccess();
-      auto& writtenRegisters  = inst.getWrittenRegisters();
-
       /* Set the taint */
       inst.setTaint();
-
-      // ----------------------------------------------------------------------
-
-      /*
-       * If the symbolic engine is disable we delete symbolic
-       * expressions and AST nodes. Note that if the taint engine
-       * is enable we must compute semanitcs to spread the taint.
-       */
-      if (!this->symbolicEngine->isEnabled()) {
-        /* Clear memory operands */
-        this->collectNodes(inst.operands);
-
-        /* Clear implicit and explicit semantics */
-        loadAccess.clear();
-        readRegisters.clear();
-        readImmediates.clear();
-        storeAccess.clear();
-        writtenRegisters.clear();
-
-        /* Symbolic Expressions */
-        this->removeSymbolicExpressions(inst);
-
-        /* Restore backup */
-        *this->symbolicEngine = *this->backupSymbolicEngine;
-      }
-
-      // ----------------------------------------------------------------------
 
       /*
        * If the symbolic engine is defined to process symbolic
        * execution only on symbolized expressions, we delete all
        * concrete expressions and their AST nodes.
        */
-      if (this->symbolicEngine->isEnabled() && this->modes->isModeEnabled(triton::modes::ONLY_ON_SYMBOLIZED)) {
+      if (this->modes->isModeEnabled(triton::modes::ONLY_ON_SYMBOLIZED)) {
         /* Clear memory operands */
         this->collectUnsymbolizedNodes(inst.operands);
 
         /* Clear implicit and explicit semantics - MEM */
-        this->collectUnsymbolizedNodes(loadAccess);
+        this->collectUnsymbolizedNodes(inst.getLoadAccess());
 
         /* Clear implicit and explicit semantics - REG */
-        this->collectUnsymbolizedNodes(readRegisters);
+        this->collectUnsymbolizedNodes(inst.getReadRegisters());
 
         /* Clear implicit and explicit semantics - IMM */
-        this->collectUnsymbolizedNodes(readImmediates);
+        this->collectUnsymbolizedNodes(inst.getReadImmediates());
 
         /* Clear implicit and explicit semantics - MEM */
-        this->collectUnsymbolizedNodes(storeAccess);
+        this->collectUnsymbolizedNodes(inst.getStoreAccess());
 
         /* Clear implicit and explicit semantics - REG */
-        this->collectUnsymbolizedNodes(writtenRegisters);
+        this->collectUnsymbolizedNodes(inst.getWrittenRegisters());
 
         /* Clear symbolic expressions */
         for (const auto& se : inst.symbolicExpressions) {
@@ -200,8 +160,6 @@ namespace triton {
         inst.symbolicExpressions = newVector;
       }
 
-      // ----------------------------------------------------------------------
-
       /*
        * If the symbolic engine is defined to process symbolic
        * execution only on tainted instructions, we delete all
@@ -212,19 +170,19 @@ namespace triton {
         this->collectNodes(inst.operands);
 
         /* Implicit and explicit semantics - MEM */
-        this->collectNodes(loadAccess);
+        this->collectNodes(inst.getLoadAccess());
 
         /* Implicit and explicit semantics - REG */
-        this->collectNodes(readRegisters);
+        this->collectNodes(inst.getReadRegisters());
 
         /* Implicit and explicit semantics - IMM */
-        this->collectNodes(readImmediates);
+        this->collectNodes(inst.getReadImmediates());
 
         /* Implicit and explicit semantics - MEM */
-        this->collectNodes(storeAccess);
+        this->collectNodes(inst.getStoreAccess());
 
         /* Implicit and explicit semantics - REG */
-        this->collectNodes(writtenRegisters);
+        this->collectNodes(inst.getWrittenRegisters());
 
         /* Symbolic Expressions */
         this->removeSymbolicExpressions(inst);
