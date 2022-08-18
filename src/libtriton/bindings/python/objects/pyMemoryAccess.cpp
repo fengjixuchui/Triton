@@ -8,8 +8,11 @@
 #include <triton/pythonObjects.hpp>
 #include <triton/pythonUtils.hpp>
 #include <triton/pythonXFunctions.hpp>
+#include <triton/coreUtils.hpp>
 #include <triton/exceptions.hpp>
 #include <triton/memoryAccess.hpp>
+
+#include <iostream>
 
 
 
@@ -39,7 +42,7 @@ This object is used to represent a memory access.
 
 ~~~~~~~~~~~~~{.py}
 >>> ctxt.processing(inst)
-True
+0
 >>> print(inst)
 0x40000: mov ah, byte ptr [rdx + rcx*2 + 0x100]
 
@@ -396,9 +399,7 @@ namespace triton {
 
       static PyObject* MemoryAccess_str(PyObject* self) {
         try {
-          std::stringstream str;
-          str << PyMemoryAccess_AsMemoryAccess(self);
-          return PyStr_FromFormat("%s", str.str().c_str());
+          return PyStr_FromFormat("%s", triton::utils::toString(PyMemoryAccess_AsMemoryAccess(self)).c_str());
         }
         catch (const triton::exceptions::Exception& e) {
           return PyErr_Format(PyExc_TypeError, "%s", e.what());

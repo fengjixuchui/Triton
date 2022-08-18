@@ -8,8 +8,11 @@
 #include <triton/pythonObjects.hpp>
 #include <triton/pythonUtils.hpp>
 #include <triton/pythonXFunctions.hpp>
+#include <triton/coreUtils.hpp>
 #include <triton/exceptions.hpp>
 #include <triton/symbolicVariable.hpp>
+
+#include <iostream>
 
 
 
@@ -198,9 +201,7 @@ namespace triton {
 
       static PyObject* SymbolicVariable_str(PyObject* self) {
         try {
-          std::stringstream str;
-          str << PySymbolicVariable_AsSymbolicVariable(self);
-          return PyStr_FromFormat("%s", str.str().c_str());
+          return PyStr_FromFormat("%s", triton::utils::toString(PySymbolicVariable_AsSymbolicVariable(self)).c_str());
         }
         catch (const triton::exceptions::Exception& e) {
           return PyErr_Format(PyExc_TypeError, "%s", e.what());

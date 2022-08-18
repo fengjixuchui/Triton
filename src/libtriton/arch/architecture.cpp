@@ -8,11 +8,14 @@
 #include <new>
 
 #include <triton/aarch64Cpu.hpp>
+#include <triton/aarch64Specifications.hpp>
 #include <triton/architecture.hpp>
 #include <triton/arm32Cpu.hpp>
+#include <triton/arm32Specifications.hpp>
 #include <triton/exceptions.hpp>
 #include <triton/x8664Cpu.hpp>
 #include <triton/x86Cpu.hpp>
+#include <triton/x86Specifications.hpp>
 
 
 
@@ -47,37 +50,16 @@ namespace triton {
     void Architecture::setArchitecture(triton::arch::architecture_e arch) {
       /* Allocate and init the good arch */
       switch (arch) {
-        case triton::arch::ARCH_X86_64:
-          /* init the new instance */
-          this->cpu.reset(new(std::nothrow) triton::arch::x86::x8664Cpu(this->callbacks));
-          if (this->cpu == nullptr)
-            throw triton::exceptions::Architecture("Architecture::setArchitecture(): Not enough memory.");
-          break;
-
-        case triton::arch::ARCH_X86:
-          /* init the new instance */
-          this->cpu.reset(new(std::nothrow) triton::arch::x86::x86Cpu(this->callbacks));
-          if (this->cpu == nullptr)
-            throw triton::exceptions::Architecture("Architecture::setArchitecture(): Not enough memory.");
-          break;
-
-        case triton::arch::ARCH_AARCH64:
-          /* init the new instance */
-          this->cpu.reset(new(std::nothrow) triton::arch::arm::aarch64::AArch64Cpu(this->callbacks));
-          if (this->cpu == nullptr)
-            throw triton::exceptions::Architecture("Architecture::setArchitecture(): Not enough memory.");
-          break;
-
-        case triton::arch::ARCH_ARM32:
-          /* init the new instance */
-          this->cpu.reset(new(std::nothrow) triton::arch::arm::arm32::Arm32Cpu(this->callbacks));
-          if (this->cpu == nullptr)
-            throw triton::exceptions::Architecture("Architecture::setArchitecture(): Not enough memory.");
-          break;
-
+        case triton::arch::ARCH_X86_64:  this->cpu.reset(new(std::nothrow) triton::arch::x86::x8664Cpu(this->callbacks));            break;
+        case triton::arch::ARCH_X86:     this->cpu.reset(new(std::nothrow) triton::arch::x86::x86Cpu(this->callbacks));              break;
+        case triton::arch::ARCH_AARCH64: this->cpu.reset(new(std::nothrow) triton::arch::arm::aarch64::AArch64Cpu(this->callbacks)); break;
+        case triton::arch::ARCH_ARM32:   this->cpu.reset(new(std::nothrow) triton::arch::arm::arm32::Arm32Cpu(this->callbacks));     break;
         default:
           throw triton::exceptions::Architecture("Architecture::setArchitecture(): Architecture not supported.");
-          break;
+      }
+
+      if (this->cpu == nullptr) {
+        throw triton::exceptions::Architecture("Architecture::setArchitecture(): Not enough memory.");
       }
 
       /* Setup global variables */
@@ -247,6 +229,18 @@ namespace triton {
     }
 
 
+    void Architecture::disassembly(triton::arch::BasicBlock& block, triton::uint64 addr) const {
+      if (!this->cpu)
+        throw triton::exceptions::Architecture("Architecture::disassembly(): You must define an architecture.");
+
+      for (auto& inst : block.getInstructions()) {
+        inst.setAddress(addr);
+        this->cpu->disassembly(inst);
+        addr += inst.getSize();
+      }
+    }
+
+
     std::vector<triton::arch::Instruction> Architecture::disassembly(triton::uint64 addr, triton::usize count) const {
       std::vector<triton::arch::Instruction> ret;
       ret.reserve(count);
@@ -266,7 +260,7 @@ namespace triton {
     }
 
 
-    std::vector<triton::arch::Instruction> Architecture::disassembly(triton::uint64 addr) const {
+    triton::arch::BasicBlock Architecture::disassembly(triton::uint64 addr) const {
       std::vector<triton::arch::Instruction> ret;
 
       do {
@@ -280,7 +274,7 @@ namespace triton {
         addr += inst.getSize();
       } while (!ret.back().isControlFlow());
 
-      return ret;
+      return triton::arch::BasicBlock(ret);
     }
 
 
@@ -312,38 +306,38 @@ namespace triton {
     }
 
 
-    void Architecture::setConcreteMemoryValue(triton::uint64 addr, triton::uint8 value) {
+    void Architecture::setConcreteMemoryValue(triton::uint64 addr, triton::uint8 value, bool execCallbacks) {
       if (!this->cpu)
         throw triton::exceptions::Architecture("Architecture::setConcreteMemoryValue(): You must define an architecture.");
-      this->cpu->setConcreteMemoryValue(addr, value);
+      this->cpu->setConcreteMemoryValue(addr, value, execCallbacks);
     }
 
 
-    void Architecture::setConcreteMemoryValue(const triton::arch::MemoryAccess& mem, const triton::uint512& value) {
+    void Architecture::setConcreteMemoryValue(const triton::arch::MemoryAccess& mem, const triton::uint512& value, bool execCallbacks) {
       if (!this->cpu)
         throw triton::exceptions::Architecture("Architecture::setConcreteMemoryValue(): You must define an architecture.");
-      this->cpu->setConcreteMemoryValue(mem, value);
+      this->cpu->setConcreteMemoryValue(mem, value, execCallbacks);
     }
 
 
-    void Architecture::setConcreteMemoryAreaValue(triton::uint64 baseAddr, const std::vector<triton::uint8>& values) {
+    void Architecture::setConcreteMemoryAreaValue(triton::uint64 baseAddr, const std::vector<triton::uint8>& values, bool execCallbacks) {
       if (!this->cpu)
         throw triton::exceptions::Architecture("Architecture::setConcreteMemoryAreaValue(): You must define an architecture.");
-      this->cpu->setConcreteMemoryAreaValue(baseAddr, values);
+      this->cpu->setConcreteMemoryAreaValue(baseAddr, values, execCallbacks);
     }
 
 
-    void Architecture::setConcreteMemoryAreaValue(triton::uint64 baseAddr, const triton::uint8* area, triton::usize size) {
+    void Architecture::setConcreteMemoryAreaValue(triton::uint64 baseAddr, const void* area, triton::usize size, bool execCallbacks) {
       if (!this->cpu)
         throw triton::exceptions::Architecture("Architecture::setConcreteMemoryAreaValue(): You must define an architecture.");
-      this->cpu->setConcreteMemoryAreaValue(baseAddr, area, size);
+      this->cpu->setConcreteMemoryAreaValue(baseAddr, area, size, execCallbacks);
     }
 
 
-    void Architecture::setConcreteRegisterValue(const triton::arch::Register& reg, const triton::uint512& value) {
+    void Architecture::setConcreteRegisterValue(const triton::arch::Register& reg, const triton::uint512& value, bool execCallbacks) {
       if (!this->cpu)
         throw triton::exceptions::Architecture("Architecture::setConcreteRegisterValue(): You must define an architecture.");
-      this->cpu->setConcreteRegisterValue(reg, value);
+      this->cpu->setConcreteRegisterValue(reg, value, execCallbacks);
     }
 
 
@@ -372,6 +366,31 @@ namespace triton {
       if (!this->cpu)
         throw triton::exceptions::Architecture("Architecture::clearConcreteMemoryValue(): You must define an architecture.");
       this->cpu->clearConcreteMemoryValue(baseAddr, size);
+    }
+
+
+    const triton::arch::Instruction Architecture::getNopInstruction(void) const {
+      if (!this->cpu)
+        throw triton::exceptions::Architecture("Architecture::getNopInstruction(): You must define an architecture.");
+
+      switch (this->getArchitecture()) {
+        case triton::arch::ARCH_AARCH64:
+          return triton::arch::arm::aarch64::nop;
+
+        case triton::arch::ARCH_ARM32: {
+          if (this->isThumb())
+            return triton::arch::arm::arm32::thumbnop;
+          else
+            return triton::arch::arm::arm32::nop;
+        }
+
+        case triton::arch::ARCH_X86:
+        case triton::arch::ARCH_X86_64:
+          return triton::arch::x86::nop;
+
+        default:
+          throw triton::exceptions::Architecture("Architecture::getNopInstruction(): Invalid architecture.");
+      }
     }
 
   }; /* arch namespace */

@@ -272,6 +272,8 @@ namespace triton {
           triton::uint8 mxcsr[triton::size::dword];
           //! Concrete value of the SSE Register State Mask
           triton::uint8 mxcsr_mask[triton::size::dword];
+          //! Concrete value of the TSC Register
+          triton::uint8 tsc[triton::size::qword];
 
         public:
           //! Constructor.
@@ -303,6 +305,9 @@ namespace triton {
 
           //! Returns true if regId is an EFER register
           TRITON_EXPORT bool isEFER(triton::arch::register_e regId) const;
+
+          //! Returns true if regId is an TSC register
+          TRITON_EXPORT bool isTSC(triton::arch::register_e regId) const;
 
           //! Returns true if regId is a AVX-256 (YMM) register.
           TRITON_EXPORT bool isAVX256(triton::arch::register_e regId) const;
@@ -343,11 +348,11 @@ namespace triton {
           TRITON_EXPORT triton::uint8 getConcreteMemoryValue(triton::uint64 addr, bool execCallbacks=true) const;
           TRITON_EXPORT void clear(void);
           TRITON_EXPORT void disassembly(triton::arch::Instruction& inst);
-          TRITON_EXPORT void setConcreteMemoryAreaValue(triton::uint64 baseAddr, const std::vector<triton::uint8>& values);
-          TRITON_EXPORT void setConcreteMemoryAreaValue(triton::uint64 baseAddr, const triton::uint8* area, triton::usize size);
-          TRITON_EXPORT void setConcreteMemoryValue(const triton::arch::MemoryAccess& mem, const triton::uint512& value);
-          TRITON_EXPORT void setConcreteMemoryValue(triton::uint64 addr, triton::uint8 value);
-          TRITON_EXPORT void setConcreteRegisterValue(const triton::arch::Register& reg, const triton::uint512& value);
+          TRITON_EXPORT void setConcreteMemoryAreaValue(triton::uint64 baseAddr, const std::vector<triton::uint8>& values, bool execCallbacks=true);
+          TRITON_EXPORT void setConcreteMemoryAreaValue(triton::uint64 baseAddr, const void* area, triton::usize size, bool execCallbacks=true);
+          TRITON_EXPORT void setConcreteMemoryValue(const triton::arch::MemoryAccess& mem, const triton::uint512& value, bool execCallbacks=true);
+          TRITON_EXPORT void setConcreteMemoryValue(triton::uint64 addr, triton::uint8 value, bool execCallbacks=true);
+          TRITON_EXPORT void setConcreteRegisterValue(const triton::arch::Register& reg, const triton::uint512& value, bool execCallbacks=true);
           TRITON_EXPORT void setThumb(bool state);
           TRITON_EXPORT void setMemoryExclusiveAccess(bool state);
           TRITON_EXPORT bool isConcreteMemoryValueDefined(const triton::arch::MemoryAccess& mem) const;

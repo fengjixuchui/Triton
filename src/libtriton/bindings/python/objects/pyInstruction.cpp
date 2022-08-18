@@ -8,8 +8,11 @@
 #include <triton/pythonObjects.hpp>
 #include <triton/pythonUtils.hpp>
 #include <triton/pythonXFunctions.hpp>
+#include <triton/coreUtils.hpp>
 #include <triton/exceptions.hpp>
 #include <triton/instruction.hpp>
+
+#include <iostream>
 
 
 
@@ -25,7 +28,7 @@ This object is used to represent an Instruction.
 
 ~~~~~~~~~~~~~{.py}
 >>> from __future__ import print_function
->>> from triton import TritonContext, ARCH, Instruction, OPERAND
+>>> from triton import TritonContext, ARCH, Instruction, OPERAND, EXCEPTION
 
 >>> trace = [
 ...     (0x400000, b"\x48\x8b\x05\xb8\x13\x00\x00"), # mov        rax, QWORD PTR [rip+0x13b8]
@@ -53,7 +56,7 @@ This object is used to represent an Instruction.
 ...     inst.setAddress(addr)
 ...
 ...     # Process everything
-...     if not ctxt.processing(inst):
+...     if ctxt.processing(inst) == EXCEPTION.FAULT_UD:
 ...         print("Fail an instruction")
 ...
 ...     print(inst)
@@ -111,7 +114,7 @@ This object is used to represent an Instruction.
 >>> inst.setAddress(0x40000)
 >>> inst.setOpcode(b"\x48\xC7\xC0\x01\x00\x00\x00")
 >>> ctxt.processing(inst)
-True
+0
 >>> print(inst)
 0x40000: mov rax, 1
 
@@ -121,7 +124,7 @@ True
 >>> inst = Instruction(b"\x48\xC7\xC0\x01\x00\x00\x00")
 >>> inst.setAddress(0x40000)
 >>> ctxt.processing(inst)
-True
+0
 >>> print(inst)
 0x40000: mov rax, 1
 
@@ -130,7 +133,7 @@ True
 ~~~~~~~~~~~~~{.py}
 >>> inst = Instruction(0x40000, b"\x48\xC7\xC0\x01\x00\x00\x00")
 >>> ctxt.processing(inst)
-True
+0
 >>> print(inst)
 0x40000: mov rax, 1
 
@@ -216,6 +219,9 @@ Returns true if at least one of its \ref py_SymbolicExpression_page is tainted.
 
 - <b>bool isWriteBack(void)</b><br>
 Returns true if the instruction performs a write back. Mainly used for AArch64 instructions like LDR.
+
+- <b>bool isUpdateFlag(void)</b><br>
+Returns true if the instruction updates flags. Mainly used for AArch64 instructions like ADDS.
 
 - <b>bool isThumb(void)</b><br>
 Returns true if the instruction is a Thumb instruction.
@@ -639,6 +645,18 @@ namespace triton {
       }
 
 
+      static PyObject* Instruction_isUpdateFlag(PyObject* self, PyObject* noarg) {
+        try {
+          if (PyInstruction_AsInstruction(self)->isUpdateFlag() == true)
+            Py_RETURN_TRUE;
+          Py_RETURN_FALSE;
+        }
+        catch (const triton::exceptions::Exception& e) {
+          return PyErr_Format(PyExc_TypeError, "%s", e.what());
+        }
+      }
+
+
       static PyObject* Instruction_isThumb(PyObject* self, PyObject* noarg) {
         try {
           if (PyInstruction_AsInstruction(self)->isThumb() == true)
@@ -708,9 +726,7 @@ namespace triton {
 
       static PyObject* Instruction_str(PyObject* self) {
         try {
-          std::stringstream str;
-          str << PyInstruction_AsInstruction(self);
-          return PyStr_FromFormat("%s", str.str().c_str());
+          return PyStr_FromFormat("%s", triton::utils::toString(PyInstruction_AsInstruction(self)).c_str());
         }
         catch (const triton::exceptions::Exception& e) {
           return PyErr_Format(PyExc_TypeError, "%s", e.what());
@@ -746,6 +762,7 @@ namespace triton {
         {"isSymbolized",              Instruction_isSymbolized,             METH_NOARGS,     ""},
         {"isTainted",                 Instruction_isTainted,                METH_NOARGS,     ""},
         {"isWriteBack",               Instruction_isWriteBack,              METH_NOARGS,     ""},
+        {"isUpdateFlag",              Instruction_isUpdateFlag,             METH_NOARGS,     ""},
         {"isThumb",                   Instruction_isThumb,                  METH_NOARGS,     ""},
         {"setAddress",                Instruction_setAddress,               METH_O,          ""},
         {"setOpcode",                 Instruction_setOpcode,                METH_O,          ""},
@@ -844,7 +861,7 @@ namespace triton {
       }
 
 
-      PyObject* PyInstruction(const triton::uint8* opcode, triton::uint32 opSize) {
+      PyObject* PyInstruction(const void* opcode, triton::uint32 opSize) {
         Instruction_Object* object;
 
         PyType_Ready(&Instruction_Type);
@@ -856,7 +873,7 @@ namespace triton {
       }
 
 
-      PyObject* PyInstruction(triton::uint64 addr, const triton::uint8* opcode, triton::uint32 opSize) {
+      PyObject* PyInstruction(triton::uint64 addr, const void* opcode, triton::uint32 opSize) {
         Instruction_Object* object;
 
         PyType_Ready(&Instruction_Type);

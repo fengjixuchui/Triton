@@ -5,8 +5,7 @@
 import unittest
 import os
 
-from triton import (Instruction, ARCH, CPUSIZE, MemoryAccess, MODE,
-                    TritonContext, REG)
+from triton import *
 
 
 def checkAstIntegrity(instruction):
@@ -94,7 +93,7 @@ class DefCamp2015(object):
         for phdr in phdrs:
             size   = phdr.physical_size
             vaddr  = phdr.virtual_address
-            self.Triton.setConcreteMemoryAreaValue(vaddr, phdr.content)
+            self.Triton.setConcreteMemoryAreaValue(vaddr, list(phdr.content))
 
     def test_defcamp_2015(self):
         """Load binary, self.Triton.setup environment and solve challenge with sym eval."""
@@ -353,7 +352,7 @@ class Emu1(object):
             instruction.setAddress(pc)
 
             # Check if triton doesn't supports this instruction
-            self.assertTrue(self.Triton.processing(instruction))
+            self.assertTrue(self.Triton.processing(instruction) == EXCEPTION.NO_FAULT)
             self.assertTrue(checkAstIntegrity(instruction))
 
             pc = self.Triton.getConcreteRegisterValue(self.Triton.registers.rip)

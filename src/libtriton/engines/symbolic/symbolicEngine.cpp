@@ -251,9 +251,9 @@ namespace triton {
 
 
       /* Returns all symbolic variables */
-      std::unordered_map<triton::usize, SharedSymbolicVariable> SymbolicEngine::getSymbolicVariables(void) const {
+      std::map<triton::usize, SharedSymbolicVariable> SymbolicEngine::getSymbolicVariables(void) const {
         // Copy and clean up dead weak ref
-        std::unordered_map<triton::usize, SharedSymbolicVariable> ret;
+        std::map<triton::usize, SharedSymbolicVariable> ret;
         std::vector<triton::usize> toRemove;
 
         for (auto& kv : this->symbolicVariables) {
@@ -316,7 +316,7 @@ namespace triton {
       /* Returns the symbolic address value */
       triton::uint8 SymbolicEngine::getSymbolicMemoryValue(triton::uint64 address) {
         triton::arch::MemoryAccess mem(address, triton::size::byte);
-        return this->getSymbolicMemoryValue(mem).convert_to<triton::uint8>();
+        return static_cast<triton::uint8>(this->getSymbolicMemoryValue(mem));
       }
 
 
@@ -541,6 +541,14 @@ namespace triton {
         expression->setAst(tmp);
 
         return symVar;
+      }
+
+
+      /* Symbolize a memory area to 8-bits symbolic variables */
+      void SymbolicEngine::symbolizeMemory(triton::uint64 addr, triton::usize size) {
+        for (triton::usize i = 0; i != size; i++) {
+          this->symbolizeMemory(triton::arch::MemoryAccess(addr + i, triton::size::byte));
+        }
       }
 
 
@@ -1212,7 +1220,7 @@ namespace triton {
 
           /* Initialize the address only if it is not already defined */
           if (!mem.getAddress() || force)
-            mem.setAddress(leaAst->evaluate().convert_to<triton::uint64>());
+            mem.setAddress(static_cast<triton::uint64>(leaAst->evaluate()));
         }
       }
 

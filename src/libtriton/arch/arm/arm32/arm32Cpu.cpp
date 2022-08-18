@@ -6,6 +6,7 @@
 */
 
 #include <algorithm>
+#include <cctype>
 #include <cstring>
 
 #include <triton/architecture.hpp>
@@ -258,230 +259,233 @@ namespace triton {
 
           /* Update instruction address if undefined */
           if (!inst.getAddress()) {
-            inst.setAddress(this->getConcreteRegisterValue(this->getProgramCounter()).convert_to<triton::uint64>());
+            inst.setAddress(static_cast<triton::uint64>(this->getConcreteRegisterValue(this->getProgramCounter())));
           }
 
           /* Let's disass and build our operands */
           count = triton::extlibs::capstone::cs_disasm(handle, inst.getOpcode(), inst.getSize(), inst.getAddress(), 0, &insn);
           if (count > 0) {
             triton::extlibs::capstone::cs_detail* detail = insn->detail;
-            for (triton::uint32 j = 0; j < 1; j++) {
-              /* Refine the opcode */
-              inst.setOpcode(insn[j].bytes, insn[j].size);
 
-              /* Refine the size */
-              inst.setSize(insn[j].size);
+            /* Refine the opcode */
+            inst.setOpcode(insn[0].bytes, insn[0].size);
 
-              /* Init the instruction's type */
-              inst.setType(this->capstoneInstructionToTritonInstruction(insn[j].id));
+            /* Refine the size */
+            inst.setSize(insn[0].size);
 
-              /* Init the instruction's code codition */
-              inst.setCodeCondition(this->capstoneConditionToTritonCondition(detail->arm.cc));
+            /* Init the instruction's type */
+            inst.setType(this->capstoneInstructionToTritonInstruction(insn[0].id));
 
-              /* Init the instruction's write back flag */
-              inst.setWriteBack(detail->arm.writeback);
+            /* Init the instruction's code codition */
+            inst.setCodeCondition(this->capstoneConditionToTritonCondition(detail->arm.cc));
 
-              /* Set True if the instruction udpate flags */
-              inst.setUpdateFlag(detail->arm.update_flags);
+            /* Init the instruction's write back flag */
+            inst.setWriteBack(detail->arm.writeback);
 
-              /* Set thumb mode */
-              inst.setThumb(thumb);
+            /* Set True if the instruction udpate flags */
+            inst.setUpdateFlag(detail->arm.update_flags);
 
-              /* Init the disassembly */
-              std::stringstream str;
+            /* Set thumb mode */
+            inst.setThumb(thumb);
 
-              /* Add mnemonic */
-              str << insn[j].mnemonic;
+            /* Set architecture */
+            inst.setArchitecture(triton::arch::ARCH_ARM32);
 
-              /* Add operands */
-              if (inst.getType() == ID_INS_IT || detail->arm.op_count)
-                str << " " <<  insn[j].op_str;
+            /* Init the disassembly */
+            std::stringstream str;
 
-              inst.setDisassembly(str.str());
+            /* Add mnemonic */
+            str << insn[0].mnemonic;
 
-              /* Process IT instruction */
-              if (inst.getType() == ID_INS_IT) {
-                /* Nested IT instruction, throw an exception as this is not valid ARM code */
-                if (this->itInstrsCount > 0)
-                  throw triton::exceptions::Disassembly("Arm32Cpu::disassembly(): Nested IT instructions are not allowed.");
+            /* Add operands */
+            if (inst.getType() == ID_INS_IT || detail->arm.op_count)
+              str << " " <<  insn[0].op_str;
 
-                /* Copy state from the mnemonic of the instruction */
-                strncpy(this->itStateArray, &insn[j].mnemonic[1], 5);
-                this->itStateArray[4] = 0;
+            inst.setDisassembly(str.str());
 
-                this->itInstrsCount = strlen(this->itStateArray);
-                this->itInstrIndex  = 0;
+            /* Process IT instruction */
+            if (inst.getType() == ID_INS_IT) {
+              /* Nested IT instruction, throw an exception as this is not valid ARM code */
+              if (this->itInstrsCount > 0)
+                throw triton::exceptions::Disassembly("Arm32Cpu::disassembly(): Nested IT instructions are not allowed.");
 
-                this->itCC    = inst.getCodeCondition();
-                this->itCCInv = this->invertCodeCondition(this->itCC);
-              }
+              /* Copy state from the mnemonic of the instruction */
+              strncpy(this->itStateArray, &insn[0].mnemonic[1], 5);
+              this->itStateArray[4] = 0;
 
-              /* Process instruction within an IT block */
-              if (inst.getType() != ID_INS_IT && this->itInstrsCount > 0) {
-                /* NOTE Assuming that CS always returns mnemonics in lower case */
-                triton::arch::arm::condition_e cc = this->itStateArray[this->itInstrIndex] == 't' ? this->itCC : this->itCCInv;
+              this->itInstrsCount = strlen(this->itStateArray);
+              this->itInstrIndex  = 0;
 
-                inst.setCodeCondition(cc);
+              this->itCC    = inst.getCodeCondition();
+              this->itCCInv = this->invertCodeCondition(this->itCC);
+            }
 
-                this->itInstrsCount--;
-                this->itInstrIndex++;
-              }
+            /* Process instruction within an IT block */
+            if (inst.getType() != ID_INS_IT && this->itInstrsCount > 0) {
+              /* NOTE Assuming that CS always returns mnemonics in lower case */
+              triton::arch::arm::condition_e cc = this->itStateArray[this->itInstrIndex] == 't' ? this->itCC : this->itCCInv;
 
-              /* Init operands */
-              for (triton::uint32 n = 0; n < detail->arm.op_count; n++) {
-                triton::extlibs::capstone::cs_arm_op* op = &(detail->arm.operands[n]);
-                switch(op->type) {
+              inst.setCodeCondition(cc);
 
-                  case triton::extlibs::capstone::ARM_OP_IMM: {
-                    triton::arch::Immediate imm(op->imm, triton::size::dword);
+              this->itInstrsCount--;
+              this->itInstrIndex++;
+            }
 
-                    if (op->subtracted)
-                      imm.setSubtracted(true);
+            /* Init operands */
+            for (triton::uint32 n = 0; n < detail->arm.op_count; n++) {
+              triton::extlibs::capstone::cs_arm_op* op = &(detail->arm.operands[n]);
+              switch(op->type) {
 
-                    inst.operands.push_back(triton::arch::OperandWrapper(imm));
-                    break;
-                  }
+                case triton::extlibs::capstone::ARM_OP_IMM: {
+                  triton::arch::Immediate imm(op->imm, triton::size::dword);
 
-                  case triton::extlibs::capstone::ARM_OP_MEM: {
-                    triton::arch::MemoryAccess mem;
+                  if (op->subtracted)
+                    imm.setSubtracted(true);
 
-                    /* Set the size of the memory access */
-                    mem.setBits(triton::bitsize::dword-1, 0);
+                  inst.operands.push_back(triton::arch::OperandWrapper(imm));
+                  break;
+                }
 
-                    /* LEA if exists */
-                    const triton::arch::Register base(*this, this->capstoneRegisterToTritonRegister(op->mem.base));
-                    triton::arch::Register index(*this, this->capstoneRegisterToTritonRegister(op->mem.index));
+                case triton::extlibs::capstone::ARM_OP_MEM: {
+                  triton::arch::MemoryAccess mem;
 
-                    /* Set Shift type and value */
-                    triton::arch::arm::shift_e shiftType = this->capstoneShiftToTritonShift(op->shift.type);
+                  /* Set the size of the memory access */
+                  triton::uint32 size = this->getMemoryOperandSpecialSize(inst.getType());
+                  mem.setBits(size ? ((size * triton::bitsize::byte) - 1) : triton::bitsize::dword-1, 0);
 
-                    index.setShiftType(shiftType);
+                  /* LEA if exists */
+                  const triton::arch::Register base(*this, this->capstoneRegisterToTritonRegister(op->mem.base));
+                  triton::arch::Register index(*this, this->capstoneRegisterToTritonRegister(op->mem.index));
 
-                    switch(shiftType) {
-                      case triton::arch::arm::ID_SHIFT_INVALID:
-                        break;
-                      case triton::arch::arm::ID_SHIFT_ASR:
-                      case triton::arch::arm::ID_SHIFT_LSL:
-                      case triton::arch::arm::ID_SHIFT_LSR:
-                      case triton::arch::arm::ID_SHIFT_ROR:
-                        index.setShiftValue(op->shift.value);
-                        break;
-                      case triton::arch::arm::ID_SHIFT_RRX:
-                        /* NOTE: According to the manual RRX there is no
-                         * immediate associated with this shift type. However,
-                         * from the description of the instruction it can be
-                         * deduced that a value of one is used.
-                         */
-                        index.setShiftValue(1);
-                        break;
-                      case triton::arch::arm::ID_SHIFT_ASR_REG:
-                      case triton::arch::arm::ID_SHIFT_LSL_REG:
-                      case triton::arch::arm::ID_SHIFT_LSR_REG:
-                      case triton::arch::arm::ID_SHIFT_ROR_REG:
-                        index.setShiftValue(this->capstoneRegisterToTritonRegister(op->shift.value));
-                        break;
-                      case triton::arch::arm::ID_SHIFT_RRX_REG:
-                        /* NOTE: Capstone considers this as a viable shift operand
-                         * but according to the ARM manual this is not possible.
-                         */
-                        throw triton::exceptions::Disassembly("Arm32Cpu::disassembly(): Invalid shift type.");
-                        break;
-                      default:
-                        throw triton::exceptions::Disassembly("Arm32Cpu::disassembly(): Invalid shift type.");
-                    }
+                  /* Set Shift type and value */
+                  triton::arch::arm::shift_e shiftType = this->capstoneShiftToTritonShift(op->shift.type);
 
-                    if (op->subtracted) {
-                      index.setSubtracted(true);
-                    }
+                  index.setShiftType(shiftType);
 
-                    triton::uint32 immsize = (
-                      this->isRegisterValid(base.getId()) ? base.getSize() :
-                      this->isRegisterValid(index.getId()) ? index.getSize() :
-                      this->gprSize()
-                    );
-
-                    triton::arch::Immediate disp(op->mem.disp, immsize);
-
-                    /* Specify that LEA contains a PC relative */
-                    if (base.getId() == this->pcId) {
-                      /* NOTE: PC always points to the address to the current
-                       * instruction plus: a) 8 in case of ARM mode, or b) 4 in
-                       * case of Thumb. It is also aligned to 4 bytes. For more
-                       * information, refer to section "Use of labels in UAL
-                       * instruction syntax" of the reference manual.
+                  switch(shiftType) {
+                    case triton::arch::arm::ID_SHIFT_INVALID:
+                      break;
+                    case triton::arch::arm::ID_SHIFT_ASR:
+                    case triton::arch::arm::ID_SHIFT_LSL:
+                    case triton::arch::arm::ID_SHIFT_LSR:
+                    case triton::arch::arm::ID_SHIFT_ROR:
+                      index.setShiftValue(op->shift.value);
+                      break;
+                    case triton::arch::arm::ID_SHIFT_RRX:
+                      /* NOTE: According to the manual RRX there is no
+                       * immediate associated with this shift type. However,
+                       * from the description of the instruction it can be
+                       * deduced that a value of one is used.
                        */
-                      auto offset = this->thumb ? 4 : 8;
-                      auto address = (inst.getAddress() + offset) & 0xfffffffc;
-                      mem.setPcRelative(address);
-                    }
-
-                    /* Note that in ARM32 there is no segment register and scale value */
-                    mem.setBaseRegister(base);
-                    mem.setIndexRegister(index);
-                    mem.setDisplacement(disp);
-
-                    /* If there is an index register available, set scale to 1 to perform this following computation (base) + (index * scale) */
-                    if (this->isRegisterValid(index.getId()))
-                      mem.setScale(triton::arch::Immediate(1, index.getSize()));
-
-                    inst.operands.push_back(triton::arch::OperandWrapper(mem));
-                    break;
+                      index.setShiftValue(1);
+                      break;
+                    case triton::arch::arm::ID_SHIFT_ASR_REG:
+                    case triton::arch::arm::ID_SHIFT_LSL_REG:
+                    case triton::arch::arm::ID_SHIFT_LSR_REG:
+                    case triton::arch::arm::ID_SHIFT_ROR_REG:
+                      index.setShiftValue(this->capstoneRegisterToTritonRegister(op->shift.value));
+                      break;
+                    case triton::arch::arm::ID_SHIFT_RRX_REG:
+                      /* NOTE: Capstone considers this as a viable shift operand
+                       * but according to the ARM manual this is not possible.
+                       */
+                      throw triton::exceptions::Disassembly("Arm32Cpu::disassembly(): Invalid shift type.");
+                      break;
+                    default:
+                      throw triton::exceptions::Disassembly("Arm32Cpu::disassembly(): Invalid shift type.");
                   }
 
-                  case triton::extlibs::capstone::ARM_OP_REG: {
-                    triton::arch::Register reg(*this, this->capstoneRegisterToTritonRegister(op->reg));
-
-                    /* Set Shift type and value */
-                    triton::arch::arm::shift_e shiftType = this->capstoneShiftToTritonShift(op->shift.type);
-
-                    reg.setShiftType(shiftType);
-
-                    switch(shiftType) {
-                      case triton::arch::arm::ID_SHIFT_INVALID:
-                        break;
-                      case triton::arch::arm::ID_SHIFT_ASR:
-                      case triton::arch::arm::ID_SHIFT_LSL:
-                      case triton::arch::arm::ID_SHIFT_LSR:
-                      case triton::arch::arm::ID_SHIFT_ROR:
-                        reg.setShiftValue(op->shift.value);
-                        break;
-                      case triton::arch::arm::ID_SHIFT_RRX:
-                        /* NOTE: According to the manual RRX there is no
-                         * immediate associated with this shift type. However,
-                         * from the description of the instruction it can be
-                         * deduced that a value of one is used.
-                         */
-                        reg.setShiftValue(1);
-                        break;
-                      case triton::arch::arm::ID_SHIFT_ASR_REG:
-                      case triton::arch::arm::ID_SHIFT_LSL_REG:
-                      case triton::arch::arm::ID_SHIFT_LSR_REG:
-                      case triton::arch::arm::ID_SHIFT_ROR_REG:
-                        reg.setShiftValue(this->capstoneRegisterToTritonRegister(op->shift.value));
-                        break;
-                      case triton::arch::arm::ID_SHIFT_RRX_REG:
-                        /* NOTE: Capstone considers this as a viable shift operand
-                         * but according to the ARM manual this is not possible.
-                         */
-                        throw triton::exceptions::Disassembly("Arm32Cpu::disassembly(): Invalid shift type.");
-                        break;
-                      default:
-                        throw triton::exceptions::Disassembly("Arm32Cpu::disassembly(): Invalid shift type.");
-                    }
-
-                    if (op->subtracted)
-                      reg.setSubtracted(true);
-
-                    inst.operands.push_back(triton::arch::OperandWrapper(reg));
-                    break;
+                  if (op->subtracted) {
+                    index.setSubtracted(true);
                   }
 
-                  default:
-                    /* NOTE: FP, CIMM, and missing one are not supported yet. */
-                    throw triton::exceptions::Disassembly("Arm32Cpu::disassembly(): Invalid operand.");
-                } // switch
-              } // for operand
-            } // for instruction
+                  triton::uint32 immsize = (
+                    this->isRegisterValid(base.getId()) ? base.getSize() :
+                    this->isRegisterValid(index.getId()) ? index.getSize() :
+                    this->gprSize()
+                  );
+
+                  triton::arch::Immediate disp(op->mem.disp, immsize);
+
+                  /* Specify that LEA contains a PC relative */
+                  if (base.getId() == this->pcId) {
+                    /* NOTE: PC always points to the address to the current
+                     * instruction plus: a) 8 in case of ARM mode, or b) 4 in
+                     * case of Thumb. It is also aligned to 4 bytes. For more
+                     * information, refer to section "Use of labels in UAL
+                     * instruction syntax" of the reference manual.
+                     */
+                    auto offset = this->thumb ? 4 : 8;
+                    auto address = (inst.getAddress() + offset) & 0xfffffffc;
+                    mem.setPcRelative(address);
+                  }
+
+                  /* Note that in ARM32 there is no segment register and scale value */
+                  mem.setBaseRegister(base);
+                  mem.setIndexRegister(index);
+                  mem.setDisplacement(disp);
+
+                  /* If there is an index register available, set scale to 1 to perform this following computation (base) + (index * scale) */
+                  if (this->isRegisterValid(index.getId()))
+                    mem.setScale(triton::arch::Immediate(1, index.getSize()));
+
+                  inst.operands.push_back(triton::arch::OperandWrapper(mem));
+                  break;
+                }
+
+                case triton::extlibs::capstone::ARM_OP_REG: {
+                  triton::arch::Register reg(*this, this->capstoneRegisterToTritonRegister(op->reg));
+
+                  /* Set Shift type and value */
+                  triton::arch::arm::shift_e shiftType = this->capstoneShiftToTritonShift(op->shift.type);
+
+                  reg.setShiftType(shiftType);
+
+                  switch(shiftType) {
+                    case triton::arch::arm::ID_SHIFT_INVALID:
+                      break;
+                    case triton::arch::arm::ID_SHIFT_ASR:
+                    case triton::arch::arm::ID_SHIFT_LSL:
+                    case triton::arch::arm::ID_SHIFT_LSR:
+                    case triton::arch::arm::ID_SHIFT_ROR:
+                      reg.setShiftValue(op->shift.value);
+                      break;
+                    case triton::arch::arm::ID_SHIFT_RRX:
+                      /* NOTE: According to the manual RRX there is no
+                       * immediate associated with this shift type. However,
+                       * from the description of the instruction it can be
+                       * deduced that a value of one is used.
+                       */
+                      reg.setShiftValue(1);
+                      break;
+                    case triton::arch::arm::ID_SHIFT_ASR_REG:
+                    case triton::arch::arm::ID_SHIFT_LSL_REG:
+                    case triton::arch::arm::ID_SHIFT_LSR_REG:
+                    case triton::arch::arm::ID_SHIFT_ROR_REG:
+                      reg.setShiftValue(this->capstoneRegisterToTritonRegister(op->shift.value));
+                      break;
+                    case triton::arch::arm::ID_SHIFT_RRX_REG:
+                      /* NOTE: Capstone considers this as a viable shift operand
+                       * but according to the ARM manual this is not possible.
+                       */
+                      throw triton::exceptions::Disassembly("Arm32Cpu::disassembly(): Invalid shift type.");
+                      break;
+                    default:
+                      throw triton::exceptions::Disassembly("Arm32Cpu::disassembly(): Invalid shift type.");
+                  }
+
+                  if (op->subtracted)
+                    reg.setSubtracted(true);
+
+                  inst.operands.push_back(triton::arch::OperandWrapper(reg));
+                  break;
+                }
+
+                default:
+                  /* NOTE: FP, CIMM, and missing one are not supported yet. */
+                  throw triton::exceptions::Disassembly("Arm32Cpu::disassembly(): Invalid operand.");
+              } // switch
+            } // for operand
 
             /* Set branch */
             if (detail->groups_count > 0) {
@@ -606,7 +610,7 @@ namespace triton {
           std::vector<triton::uint8> area;
 
           for (triton::usize index = 0; index < size; index++)
-            area.push_back(this->getConcreteMemoryValue(baseAddr+index));
+            area.push_back(this->getConcreteMemoryValue(baseAddr+index, execCallbacks));
 
           return area;
         }
@@ -648,14 +652,14 @@ namespace triton {
         }
 
 
-        void Arm32Cpu::setConcreteMemoryValue(triton::uint64 addr, triton::uint8 value) {
-          if (this->callbacks)
+        void Arm32Cpu::setConcreteMemoryValue(triton::uint64 addr, triton::uint8 value, bool execCallbacks) {
+          if (execCallbacks && this->callbacks)
             this->callbacks->processCallbacks(triton::callbacks::SET_CONCRETE_MEMORY_VALUE, MemoryAccess(addr, triton::size::byte), value);
           this->memory[addr] = value;
         }
 
 
-        void Arm32Cpu::setConcreteMemoryValue(const triton::arch::MemoryAccess& mem, const triton::uint512& value) {
+        void Arm32Cpu::setConcreteMemoryValue(const triton::arch::MemoryAccess& mem, const triton::uint512& value, bool execCallbacks) {
           triton::uint64 addr = mem.getAddress();
           triton::uint32 size = mem.getSize();
           triton::uint512 cv  = value;
@@ -666,55 +670,55 @@ namespace triton {
           if (size == 0 || size > triton::size::dqqword)
             throw triton::exceptions::Cpu("Arm32Cpu::setConcreteMemoryValue(): Invalid size memory.");
 
-          if (this->callbacks)
+          if (execCallbacks && this->callbacks)
             this->callbacks->processCallbacks(triton::callbacks::SET_CONCRETE_MEMORY_VALUE, mem, value);
 
           for (triton::uint32 i = 0; i < size; i++) {
-            this->memory[addr+i] = (cv & 0xff).convert_to<triton::uint8>();
+            this->memory[addr+i] = static_cast<triton::uint8>((cv & 0xff));
             cv >>= 8;
           }
         }
 
 
-        void Arm32Cpu::setConcreteMemoryAreaValue(triton::uint64 baseAddr, const std::vector<triton::uint8>& values) {
+        void Arm32Cpu::setConcreteMemoryAreaValue(triton::uint64 baseAddr, const std::vector<triton::uint8>& values, bool execCallbacks) {
           this->memory.reserve(values.size() + this->memory.size());
           for (triton::usize index = 0; index < values.size(); index++) {
-            this->setConcreteMemoryValue(baseAddr+index, values[index]);
+            this->setConcreteMemoryValue(baseAddr+index, values[index], execCallbacks);
           }
         }
 
 
-        void Arm32Cpu::setConcreteMemoryAreaValue(triton::uint64 baseAddr, const triton::uint8* area, triton::usize size) {
+        void Arm32Cpu::setConcreteMemoryAreaValue(triton::uint64 baseAddr, const void* area, triton::usize size, bool execCallbacks) {
           this->memory.reserve(size + this->memory.size());
           for (triton::usize index = 0; index < size; index++) {
-            this->setConcreteMemoryValue(baseAddr+index, area[index]);
+            this->setConcreteMemoryValue(baseAddr+index, reinterpret_cast<const triton::uint8*>(area)[index], execCallbacks);
           }
         }
 
 
-        void Arm32Cpu::setConcreteRegisterValue(const triton::arch::Register& reg, const triton::uint512& value) {
+        void Arm32Cpu::setConcreteRegisterValue(const triton::arch::Register& reg, const triton::uint512& value, bool execCallbacks) {
           if (value > reg.getMaxValue())
             throw triton::exceptions::Register("Arm32Cpu::setConcreteRegisterValue(): You cannot set this concrete value (too big) to this register.");
 
-          if (this->callbacks)
+          if (execCallbacks && this->callbacks)
             this->callbacks->processCallbacks(triton::callbacks::SET_CONCRETE_REGISTER_VALUE, reg, value);
 
           switch (reg.getId()) {
-            case triton::arch::ID_REG_ARM32_R0:   (*((triton::uint32*)(this->r0)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_ARM32_R1:   (*((triton::uint32*)(this->r1)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_ARM32_R2:   (*((triton::uint32*)(this->r2)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_ARM32_R3:   (*((triton::uint32*)(this->r3)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_ARM32_R4:   (*((triton::uint32*)(this->r4)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_ARM32_R5:   (*((triton::uint32*)(this->r5)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_ARM32_R6:   (*((triton::uint32*)(this->r6)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_ARM32_R7:   (*((triton::uint32*)(this->r7)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_ARM32_R8:   (*((triton::uint32*)(this->r8)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_ARM32_R9:   (*((triton::uint32*)(this->r9)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_ARM32_R10:  (*((triton::uint32*)(this->r10)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_ARM32_R11:  (*((triton::uint32*)(this->r11)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_ARM32_R12:  (*((triton::uint32*)(this->r12)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_ARM32_SP:   (*((triton::uint32*)(this->sp)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_ARM32_R14:  (*((triton::uint32*)(this->r14)))  = value.convert_to<triton::uint32>(); break;
+            case triton::arch::ID_REG_ARM32_R0:   (*((triton::uint32*)(this->r0)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_ARM32_R1:   (*((triton::uint32*)(this->r1)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_ARM32_R2:   (*((triton::uint32*)(this->r2)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_ARM32_R3:   (*((triton::uint32*)(this->r3)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_ARM32_R4:   (*((triton::uint32*)(this->r4)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_ARM32_R5:   (*((triton::uint32*)(this->r5)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_ARM32_R6:   (*((triton::uint32*)(this->r6)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_ARM32_R7:   (*((triton::uint32*)(this->r7)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_ARM32_R8:   (*((triton::uint32*)(this->r8)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_ARM32_R9:   (*((triton::uint32*)(this->r9)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_ARM32_R10:  (*((triton::uint32*)(this->r10)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_ARM32_R11:  (*((triton::uint32*)(this->r11)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_ARM32_R12:  (*((triton::uint32*)(this->r12)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_ARM32_SP:   (*((triton::uint32*)(this->sp)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_ARM32_R14:  (*((triton::uint32*)(this->r14)))  = static_cast<triton::uint32>(value); break;
             case triton::arch::ID_REG_ARM32_PC: {
               /* NOTE: Once in Thumb mode only switch to ARM through a Branch
                * and Exchange instruction. The reason for this is that after
@@ -723,14 +727,14 @@ namespace triton {
                * these mechanism we would have a problem processing Thumb
                * instructions.
                */
-              auto pc = value.convert_to<triton::uint32>();
+              auto pc = static_cast<triton::uint32>(value);
               if (this->isThumb() == false && (pc & 0x1) == 0x1) {
                 this->setThumb(true);
               }
               (*((triton::uint32*)(this->pc))) = pc & ~0x1;
               break;
             }
-            case triton::arch::ID_REG_ARM32_APSR: (*((triton::uint32*)(this->apsr))) = value.convert_to<triton::uint32>(); break;
+            case triton::arch::ID_REG_ARM32_APSR: (*((triton::uint32*)(this->apsr))) = static_cast<triton::uint32>(value); break;
             case triton::arch::ID_REG_ARM32_N: {
               triton::uint32 b = (*((triton::uint32*)(this->apsr)));
               (*((triton::uint32*)(this->apsr))) = !value.is_zero() ? b | (1 << 31) : b & ~(1 << 31);

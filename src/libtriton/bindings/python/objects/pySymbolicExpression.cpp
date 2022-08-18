@@ -8,8 +8,11 @@
 #include <triton/pythonObjects.hpp>
 #include <triton/pythonUtils.hpp>
 #include <triton/pythonXFunctions.hpp>
+#include <triton/coreUtils.hpp>
 #include <triton/exceptions.hpp>
 #include <triton/symbolicExpression.hpp>
+
+#include <iostream>
 
 
 
@@ -39,7 +42,7 @@ This object is used to represent a symbolic expression.
 >>> ctxt.setConcreteRegisterValue(ctxt.registers.rdx, 67890)
 
 >>> ctxt.processing(inst)
-True
+0
 >>> print(inst)
 0x400000: xor rax, rdx
 
@@ -305,9 +308,7 @@ namespace triton {
 
       static PyObject* SymbolicExpression_str(PyObject* self) {
         try {
-          std::stringstream str;
-          str << PySymbolicExpression_AsSymbolicExpression(self);
-          return PyStr_FromFormat("%s", str.str().c_str());
+          return PyStr_FromFormat("%s", triton::utils::toString(PySymbolicExpression_AsSymbolicExpression(self)).c_str());
         }
         catch (const triton::exceptions::Exception& e) {
           return PyErr_Format(PyExc_TypeError, "%s", e.what());

@@ -8,6 +8,7 @@
 #ifndef TRITON_X86SEMANTICS_H
 #define TRITON_X86SEMANTICS_H
 
+#include <triton/archEnums.hpp>
 #include <triton/architecture.hpp>
 #include <triton/dllexport.hpp>
 #include <triton/instruction.hpp>
@@ -60,6 +61,9 @@ namespace triton {
           //! The AST Context API
           triton::ast::SharedAstContext astCtxt;
 
+          //! Exception status
+          triton::arch::exception_e exception;
+
         public:
           //! Constructor.
           TRITON_EXPORT x86Semantics(triton::arch::Architecture* architecture,
@@ -68,8 +72,8 @@ namespace triton {
                                      const triton::modes::SharedModes& modes,
                                      const triton::ast::SharedAstContext& astCtxt);
 
-          //! Builds the semantics of the instruction. Returns true if the instruction is supported.
-          TRITON_EXPORT bool buildSemantics(triton::arch::Instruction& inst);
+          //! Builds the semantics of the instruction. Returns `triton::arch::NO_FAULT` if succeed.
+          TRITON_EXPORT triton::arch::exception_e buildSemantics(triton::arch::Instruction& inst);
 
         private:
           //! Aligns the stack (add). Returns the new stack value.
@@ -763,6 +767,9 @@ namespace triton {
           //! The LZCNT semantics.
           void lzcnt_s(triton::arch::Instruction& inst);
 
+          //! The INT3 semantics.
+          void int3_s(triton::arch::Instruction& inst);
+
           //! The MFENCE semantics.
           void mfence_s(triton::arch::Instruction& inst);
 
@@ -1069,6 +1076,9 @@ namespace triton {
           //! The PMULLW semantics.
           void pmullw_s(triton::arch::Instruction& inst);
 
+          //! The PMULUDQ semantics.
+          void pmuludq_s(triton::arch::Instruction& inst);
+
           //! The POPCNT semantics.
           void popcnt_s(triton::arch::Instruction& inst);
 
@@ -1092,6 +1102,9 @@ namespace triton {
 
           //! The PREFETCHx semantics.
           void prefetchx_s(triton::arch::Instruction& inst);
+
+          //! The PSHUFB semantics.
+          void pshufb_s(triton::arch::Instruction& inst);
 
           //! The PSHUFD semantics.
           void pshufd_s(triton::arch::Instruction& inst);

@@ -531,6 +531,12 @@ namespace triton {
               tritonId = triton::arch::arm::arm32::ID_INS_MOV;
               break;
 
+            #if CS_API_MAJOR >= 5
+            case triton::extlibs::capstone::ARM_INS_MOVS:
+              tritonId = triton::arch::arm::arm32::ID_INS_MOV;
+              break;
+            #endif
+
             case triton::extlibs::capstone::ARM_INS_MOVT:
               tritonId = triton::arch::arm::arm32::ID_INS_MOVT;
               break;
@@ -1938,6 +1944,22 @@ namespace triton {
           }
 
           return tritonId;
+        }
+
+
+        triton::uint32 Arm32Specifications::getMemoryOperandSpecialSize(triton::uint32 id) const {
+          switch (id) {
+            case ID_INS_LDRB:
+            case ID_INS_LDRSB:
+            case ID_INS_STRB:
+              return 1;
+            case ID_INS_LDRH:
+            case ID_INS_LDRSH:
+            case ID_INS_STRH:
+              return 2;
+            default:
+              return 0;
+          }
         }
 
       }; /* arm32 namespace */

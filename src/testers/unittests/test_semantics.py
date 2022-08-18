@@ -59,7 +59,7 @@ class TestIR(unittest.TestCase):
             instruction.setAddress(pc)
 
             # Process
-            self.assertTrue(self.ctx.processing(instruction))
+            self.assertTrue(self.ctx.processing(instruction) == EXCEPTION.NO_FAULT)
 
             # Next
             pc = self.ctx.getConcreteRegisterValue(self.ctx.registers.rip)
@@ -75,7 +75,7 @@ class TestIR(unittest.TestCase):
         for phdr in phdrs:
             size   = phdr.physical_size
             vaddr  = phdr.virtual_address
-            self.ctx.setConcreteMemoryAreaValue(vaddr, phdr.content)
+            self.ctx.setConcreteMemoryAreaValue(vaddr, list(phdr.content))
 
     def test_ir(self):
         """Load binary, setup environment and emulate the ir test suite."""
@@ -211,7 +211,7 @@ class TestIRQemu(unittest.TestCase):
             if instruction.getType() == OPCODE.X86.HLT:
                 break
 
-            self.assertTrue(ret)
+            self.assertTrue(ret == EXCEPTION.NO_FAULT)
             self.assertTrue(checkAstIntegrity(instruction))
 
             # Simulate routines
@@ -252,7 +252,7 @@ class TestIRQemu(unittest.TestCase):
         for phdr in phdrs:
             size   = phdr.physical_size
             vaddr  = phdr.virtual_address
-            self.ctx.setConcreteMemoryAreaValue(vaddr, phdr.content)
+            self.ctx.setConcreteMemoryAreaValue(vaddr, list(phdr.content))
         return binary
 
     def make_relocation(self, binary):

@@ -7,6 +7,7 @@
 
 #include <cstring>
 
+#include <triton/coreUtils.hpp>
 #include <triton/exceptions.hpp>
 #include <triton/immediate.hpp>
 #include <triton/instruction.hpp>
@@ -18,6 +19,7 @@ namespace triton {
 
     Instruction::Instruction() {
       this->address         = 0;
+      this->arch            = triton::arch::ARCH_INVALID;
       this->branch          = false;
       this->codeCondition   = triton::arch::arm::ID_CONDITION_INVALID;
       this->conditionTaken  = 0;
@@ -35,13 +37,13 @@ namespace triton {
     }
 
 
-    Instruction::Instruction(const triton::uint8* opcode, triton::uint32 opSize)
+    Instruction::Instruction(const void* opcode, triton::uint32 opSize)
       : Instruction::Instruction() {
       this->setOpcode(opcode, opSize);
     }
 
 
-    Instruction::Instruction(triton::uint64 addr, const triton::uint8* opcode, triton::uint32 opSize)
+    Instruction::Instruction(triton::uint64 addr, const void* opcode, triton::uint32 opSize)
       : Instruction::Instruction(opcode, opSize) {
       this->setAddress(addr);
     }
@@ -71,6 +73,7 @@ namespace triton {
 
     void Instruction::copy(const Instruction& other) {
       this->address             = other.address;
+      this->arch                = other.arch;
       this->branch              = other.branch;
       this->codeCondition       = other.codeCondition;
       this->conditionTaken      = other.conditionTaken;
@@ -133,7 +136,7 @@ namespace triton {
     }
 
 
-    void Instruction::setOpcode(const triton::uint8* opcode, triton::uint32 size) {
+    void Instruction::setOpcode(const void* opcode, triton::uint32 size) {
       if (size > sizeof(this->opcode))
        throw triton::exceptions::Instruction("Instruction::setOpcode(): Invalid size (too big).");
       std::memcpy(this->opcode, opcode, size);
@@ -148,6 +151,11 @@ namespace triton {
 
     triton::uint32 Instruction::getType(void) const {
       return this->type;
+    }
+
+
+    triton::arch::architecture_e Instruction::getArchitecture(void) const {
+      return this->arch;
     }
 
 
@@ -286,6 +294,11 @@ namespace triton {
     }
 
 
+    void Instruction::setArchitecture(triton::arch::architecture_e arch) {
+      this->arch = arch;
+    }
+
+
     void Instruction::setSize(triton::uint32 size) {
       this->size = size;
     }
@@ -345,11 +358,7 @@ namespace triton {
     void Instruction::addSymbolicExpression(const triton::engines::symbolic::SharedSymbolicExpression& expr) {
       if (expr == nullptr)
         throw triton::exceptions::Instruction("Instruction::addSymbolicExpression(): Cannot add a null expression.");
-
-      std::stringstream str;
-      str << *this;
-      expr->writeBackDisassembly(str.str());
-
+      expr->writeBackDisassembly(triton::utils::toString(*this));
       this->symbolicExpressions.push_back(expr);
     }
 
@@ -536,7 +545,8 @@ namespace triton {
 
 
     std::ostream& operator<<(std::ostream& stream, const Instruction& inst) {
-      stream << "0x" << std::hex << inst.getAddress() << ": " << inst.getDisassembly() << std::dec;
+      std::string dis = inst.getDisassembly();
+      stream << "0x" << std::hex << inst.getAddress() << ": " << (!dis.empty() ? dis : "<not disassembled>") << std::dec;
       return stream;
     }
 

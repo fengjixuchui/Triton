@@ -13,6 +13,7 @@
 
 #include <triton/archEnums.hpp>
 #include <triton/ast.hpp>
+#include <triton/basicBlock.hpp>
 #include <triton/bitsVector.hpp>
 #include <triton/immediate.hpp>
 #include <triton/instruction.hpp>
@@ -32,7 +33,7 @@ namespace triton {
  *  @{
  */
 
-  class API;
+  class Context;
 
   //! The Bindings namespace
   namespace bindings {
@@ -59,6 +60,15 @@ namespace triton {
       //! Creates the Immediate python class.
       PyObject* PyImmediate(const triton::arch::Immediate& imm);
 
+      //! Creates the BasicBlock python class.
+      PyObject* PyBasicBlock(void);
+
+      //! Creates the BasicBlock python class.
+      PyObject* PyBasicBlock(const triton::arch::BasicBlock& block);
+
+      //! Creates the BasicBlock python class.
+      PyObject* PyBasicBlock(std::vector<triton::arch::Instruction>& insts);
+
       //! Creates the Instruction python class.
       PyObject* PyInstruction(void);
 
@@ -66,10 +76,10 @@ namespace triton {
       PyObject* PyInstruction(const triton::arch::Instruction& inst);
 
       //! Creates the Instruction python class.
-      PyObject* PyInstruction(const triton::uint8* opcodes, triton::uint32 opSize);
+      PyObject* PyInstruction(const void* opcodes, triton::uint32 opSize);
 
       //! Creates the Instruction python class.
-      PyObject* PyInstruction(triton::uint64 addr, const triton::uint8* opcodes, triton::uint32 opSize);
+      PyObject* PyInstruction(triton::uint64 addr, const void* opcodes, triton::uint32 opSize);
 
       //! Creates the Memory python class.
       PyObject* PyMemoryAccess(const triton::arch::MemoryAccess& mem);
@@ -84,10 +94,10 @@ namespace triton {
       PyObject* PyTritonContext(triton::arch::architecture_e arch);
 
       //! Creates a TritonContext python class which is a reference to another Context.
-      PyObject* PyTritonContextRef(triton::API& api);
+      PyObject* PyTritonContextRef(triton::Context& ctx);
 
       //! Creates an AstContext python class.
-      PyObject* PyAstContext(const triton::ast::SharedAstContext& ctxt);
+      PyObject* PyAstContext(const triton::ast::SharedAstContext& actx);
 
       //! Creates the Register python class.
       PyObject* PyRegister(const triton::arch::Register& reg);
@@ -122,6 +132,17 @@ namespace triton {
 
       //! pyBitsVector type.
       extern PyTypeObject BitsVector_Type;
+
+      /* Basic Block ===================================================== */
+
+      //! pyBasicBlock object.
+      typedef struct {
+        PyObject_HEAD
+        triton::arch::BasicBlock* block;
+      } BasicBlock_Object;
+
+      //! pyBasicBlock type.
+      extern PyTypeObject BasicBlock_Type;
 
       /* Immediate ====================================================== */
 
@@ -183,9 +204,9 @@ namespace triton {
       //! pyTritonContext object.
       typedef struct {
         PyObject_HEAD
-        triton::API* api;   //! Pointer to the cpp triton context
-        bool ref;           //! Determine if this instance is a reference or not.
-        PyObject* regAttr;  //! Pointer to the registers attribute
+        triton::Context* ctx; //! Pointer to the cpp triton context
+        bool ref;             //! Determine if this instance is a reference or not.
+        PyObject* regAttr;    //! Pointer to the registers attribute
       } TritonContext_Object;
 
       //! pyRegister type.
@@ -196,7 +217,7 @@ namespace triton {
       //! pyAstContext object.
       typedef struct {
         PyObject_HEAD
-        triton::ast::SharedAstContext ctxt;
+        triton::ast::SharedAstContext actx;
       } AstContext_Object;
 
       //! pyRegister type.
@@ -252,6 +273,12 @@ namespace triton {
 /*! Returns the triton::arch::BitsVector. */
 #define PyBitsVector_AsBitsVector(v) (((triton::bindings::python::BitsVector_Object*)(v))->bv)
 
+/*! Checks if the pyObject is a triton::arch::BasicBlock. */
+#define PyBasicBlock_Check(v) ((v)->ob_type == &triton::bindings::python::BasicBlock_Type)
+
+/*! Returns the triton::arch::BasicBlock. */
+#define PyBasicBlock_AsBasicBlock(v) (((triton::bindings::python::BasicBlock_Object*)(v))->block)
+
 /*! Checks if the pyObject is a triton::arch::Immediate. */
 #define PyImmediate_Check(v) ((v)->ob_type == &triton::bindings::python::Immediate_Type)
 
@@ -280,13 +307,13 @@ namespace triton {
 #define PyTritonContext_Check(v) ((v)->ob_type == &triton::bindings::python::TritonContext_Type)
 
 /*! Returns the triton::arch::TritonContext. */
-#define PyTritonContext_AsTritonContext(v) (((triton::bindings::python::TritonContext_Object*)(v))->api)
+#define PyTritonContext_AsTritonContext(v) (((triton::bindings::python::TritonContext_Object*)(v))->ctx)
 
 /*! Checks if the pyObject is a triton::arch::AstContext. */
 #define PyAstContext_Check(v) ((v)->ob_type == &triton::bindings::python::AstContext_Type)
 
 /*! Returns the triton::arch::AstContext. */
-#define PyAstContext_AsAstContext(v) (((triton::bindings::python::AstContext_Object*)(v))->ctxt)
+#define PyAstContext_AsAstContext(v) (((triton::bindings::python::AstContext_Object*)(v))->actx)
 
 /*! Checks if the pyObject is a triton::arch::Register. */
 #define PyRegister_Check(v) ((v)->ob_type == &triton::bindings::python::Register_Type)

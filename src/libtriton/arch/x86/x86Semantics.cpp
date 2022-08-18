@@ -137,6 +137,7 @@ FXRSTOR                      | sse1       | Restore the x87 FPU, MMX, XMM, and M
 FXRSTOR64                    | sse1       | Restore the x87 FPU, MMX, XMM, and MXCSR register state from m512byte (REX.W = 1)
 FXSAVE                       | sse1       | Save the x87 FPU, MMX, XMM, and MXCSR register state to m512byte
 FXSAVE64                     | sse1       | Save the x87 FPU, MMX, XMM, and MXCSR register state to m512byte (REX.W = 1)
+INT3                         |            | Generate breakpoint trap.
 MFENCE                       | sse2       | Memory Fence
 MOV                          |            | Move
 MOVABS                       |            | Move
@@ -239,8 +240,9 @@ PMOVZXWQ                     | sse4.1     | Zero Extend 2 Packed Signed 16-bit I
 PMULHW                       | sse4.1     | Multiply Packed Signed Integers and Store High Result
 PMULLD                       | sse4.1     | Multiply Packed Integers and Store Low Result
 PMULLW                       | sse4.1     | Multiply Packed Signed Integers and Store Low Result
-POPCNT                       |            | Count Number of Bits Set to 1
+PMULUDQ                      | sse2       | Multiply Unsigned Doubleword Integer
 POP                          |            | Pop a Value from the Stack
+POPCNT                       |            | Count Number of Bits Set to 1
 POPAL/POPAD                  |            | Pop All General-Purpose Registers
 POPF                         |            | Pop Stack into lower 16-bit of EFLAGS Register
 POPFD                        |            | Pop Stack into EFLAGS Register
@@ -252,6 +254,7 @@ PREFETCHT0                   | mmx/sse1   | Move data from m8 closer to the proc
 PREFETCHT1                   | mmx/sse1   | Move data from m8 closer to the processor using T1 hint
 PREFETCHT2                   | mmx/sse1   | Move data from m8 closer to the processor using T2 hint
 PREFETCHW                    | 3DNow      | Move data from m8 closer to the processor in anticipation of a write
+PSHUFB                       | sse3       | Shuffle bytes according to contents
 PSHUFD                       | sse2       | Shuffle Packed Doublewords
 PSHUFHW                      | sse2       | Shuffle Packed High Words
 PSHUFLW                      | sse2       | Shuffle Packed Low Words
@@ -420,6 +423,7 @@ namespace triton {
                                  const triton::ast::SharedAstContext& astCtxt) : modes(modes), astCtxt(astCtxt) {
 
         this->architecture    = architecture;
+        this->exception       = triton::arch::NO_FAULT;
         this->symbolicEngine  = symbolicEngine;
         this->taintEngine     = taintEngine;
 
@@ -434,7 +438,8 @@ namespace triton {
       }
 
 
-      bool x86Semantics::buildSemantics(triton::arch::Instruction& inst) {
+      triton::arch::exception_e x86Semantics::buildSemantics(triton::arch::Instruction& inst) {
+        this->exception = triton::arch::NO_FAULT;
         switch (inst.getType()) {
           case ID_INS_AAA:            this->aaa_s(inst);          break;
           case ID_INS_AAD:            this->aad_s(inst);          break;
@@ -544,6 +549,7 @@ namespace triton {
           case ID_INS_LODSW:          this->lodsw_s(inst);        break;
           case ID_INS_LOOP:           this->loop_s(inst);         break;
           case ID_INS_LZCNT:          this->lzcnt_s(inst);        break;
+          case ID_INS_INT3:           this->int3_s(inst);         break;
           case ID_INS_MFENCE:         this->mfence_s(inst);       break;
           case ID_INS_MOV:            this->mov_s(inst);          break;
           case ID_INS_MOVABS:         this->movabs_s(inst);       break;
@@ -646,6 +652,7 @@ namespace triton {
           case ID_INS_PMULHW:         this->pmulhw_s(inst);       break;
           case ID_INS_PMULLD:         this->pmulld_s(inst);       break;
           case ID_INS_PMULLW:         this->pmullw_s(inst);       break;
+          case ID_INS_PMULUDQ:        this->pmuludq_s(inst);      break;
           case ID_INS_POPCNT:         this->popcnt_s(inst);       break;
           case ID_INS_POP:            this->pop_s(inst);          break;
           case ID_INS_POPAL:          this->popal_s(inst);        break;
@@ -659,6 +666,7 @@ namespace triton {
           case ID_INS_PREFETCHT1:     this->prefetchx_s(inst);    break;
           case ID_INS_PREFETCHT2:     this->prefetchx_s(inst);    break;
           case ID_INS_PREFETCHW:      this->prefetchx_s(inst);    break;
+          case ID_INS_PSHUFB:         this->pshufb_s(inst);       break;
           case ID_INS_PSHUFD:         this->pshufd_s(inst);       break;
           case ID_INS_PSHUFHW:        this->pshufhw_s(inst);      break;
           case ID_INS_PSHUFLW:        this->pshuflw_s(inst);      break;
@@ -812,9 +820,10 @@ namespace triton {
           case ID_INS_XORPD:          this->xorpd_s(inst);        break;
           case ID_INS_XORPS:          this->xorps_s(inst);        break;
           default:
-            return false;
+            this->exception = triton::arch::FAULT_UD;
+            break;
         }
-        return true;
+        return this->exception;
       }
 
 
@@ -835,7 +844,7 @@ namespace triton {
         expr->isTainted = this->taintEngine->taintUnion(dst, dst);
 
         /* Return the new stack value */
-        return node->evaluate().convert_to<triton::uint64>();
+        return static_cast<triton::uint64>(node->evaluate());
       }
 
 
@@ -856,7 +865,7 @@ namespace triton {
         expr->isTainted = this->taintEngine->taintUnion(dst, dst);
 
         /* Return the new stack value */
-        return node->evaluate().convert_to<triton::uint64>();
+        return static_cast<triton::uint64>(node->evaluate());
       }
 
 
@@ -3766,9 +3775,13 @@ namespace triton {
           case triton::size::dword:
             bytes.push_front(this->astCtxt->extract(31, 24, op1));
             bytes.push_front(this->astCtxt->extract(23, 16, op1));
-          case triton::size::word:
             bytes.push_front(this->astCtxt->extract(15, 8, op1));
             bytes.push_front(this->astCtxt->extract(7,  0, op1));
+            break;
+          case triton::size::word:
+            // See #1131
+            bytes.push_front(this->astCtxt->bv(0, 8));
+            bytes.push_front(this->astCtxt->bv(0, 8));
             break;
           default:
             throw triton::exceptions::Semantics("x86Semantics::bswap_s(): Invalid operand size.");
@@ -5200,7 +5213,7 @@ namespace triton {
         triton::ast::SharedAbstractNode node4 = nullptr;
 
         /* In this case, we concretize the AX option */
-        switch (op1->evaluate().convert_to<triton::uint32>()) {
+        switch (static_cast<triton::uint32>(op1->evaluate())) {
           case 0:
             node1 = this->astCtxt->bv(0x0000000d, dst1.getBitSize());
             node2 = this->astCtxt->bv(0x756e6547, dst2.getBitSize());
@@ -5451,6 +5464,11 @@ namespace triton {
             auto expr = this->symbolicEngine->createSymbolicExpression(inst, node, ax, "DIV operation");
             /* Apply the taint */
             expr->isTainted = this->taintEngine->taintUnion(ax, src);
+            /* Divide error */
+            if (result->evaluate() > 0xff) {
+              this->exception = triton::arch::FAULT_DE;
+              return;
+            }
             break;
           }
 
@@ -5460,7 +5478,8 @@ namespace triton {
             auto ax = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_AX));
             auto dividend = this->astCtxt->concat(this->symbolicEngine->getOperandAst(inst, dx), this->symbolicEngine->getOperandAst(inst, ax));
             /* res = DX:AX / Source */
-            auto result = this->astCtxt->extract((triton::bitsize::word - 1), 0, this->astCtxt->bvudiv(dividend, this->astCtxt->zx(triton::bitsize::word, divisor)));
+            auto temp = this->astCtxt->bvudiv(dividend, this->astCtxt->zx(triton::bitsize::word, divisor));
+            auto result = this->astCtxt->extract((triton::bitsize::word - 1), 0, temp);
             /* mod = DX:AX % Source */
             auto mod = this->astCtxt->extract((triton::bitsize::word - 1), 0, this->astCtxt->bvurem(dividend, this->astCtxt->zx(triton::bitsize::word, divisor)));
             /* Create the symbolic expression for AX */
@@ -5471,6 +5490,11 @@ namespace triton {
             auto expr2 = this->symbolicEngine->createSymbolicExpression(inst, mod, dx, "DIV operation");
             /* Apply the taint for DX */
             expr2->isTainted = this->taintEngine->taintUnion(dx, src);
+            /* Divide error */
+            if (temp->evaluate() > 0xffff) {
+              this->exception = triton::arch::FAULT_DE;
+              return;
+            }
             break;
           }
 
@@ -5480,7 +5504,8 @@ namespace triton {
             auto eax = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_EAX));
             auto dividend = this->astCtxt->concat(this->symbolicEngine->getOperandAst(inst, edx), this->symbolicEngine->getOperandAst(inst, eax));
             /* res = EDX:EAX / Source */
-            auto result = this->astCtxt->extract((triton::bitsize::dword - 1), 0, this->astCtxt->bvudiv(dividend, this->astCtxt->zx(triton::bitsize::dword, divisor)));
+            auto temp = this->astCtxt->bvudiv(dividend, this->astCtxt->zx(triton::bitsize::dword, divisor));
+            auto result = this->astCtxt->extract((triton::bitsize::dword - 1), 0, temp);
             /* mod = EDX:EAX % Source */
             auto mod = this->astCtxt->extract((triton::bitsize::dword - 1), 0, this->astCtxt->bvurem(dividend, this->astCtxt->zx(triton::bitsize::dword, divisor)));
             /* Create the symbolic expression for EAX */
@@ -5491,6 +5516,11 @@ namespace triton {
             auto expr2 = this->symbolicEngine->createSymbolicExpression(inst, mod, edx, "DIV operation");
             /* Apply the taint for EDX */
             expr2->isTainted = this->taintEngine->taintUnion(edx, src);
+            /* Divide error */
+            if (temp->evaluate() > 0xffffffff) {
+              this->exception = triton::arch::FAULT_DE;
+              return;
+            }
             break;
           }
 
@@ -5500,7 +5530,8 @@ namespace triton {
             auto rax = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_RAX));
             auto dividend = this->astCtxt->concat(this->symbolicEngine->getOperandAst(inst, rdx), this->symbolicEngine->getOperandAst(inst, rax));
             /* res = RDX:RAX / Source */
-            auto result = this->astCtxt->extract((triton::bitsize::qword - 1), 0, this->astCtxt->bvudiv(dividend, this->astCtxt->zx(triton::bitsize::qword, divisor)));
+            auto temp = this->astCtxt->bvudiv(dividend, this->astCtxt->zx(triton::bitsize::qword, divisor));
+            auto result = this->astCtxt->extract((triton::bitsize::qword - 1), 0, temp);
             /* mod = RDX:RAX % Source */
             auto mod = this->astCtxt->extract((triton::bitsize::qword - 1), 0, this->astCtxt->bvurem(dividend, this->astCtxt->zx(triton::bitsize::qword, divisor)));
             /* Create the symbolic expression for RAX */
@@ -5511,6 +5542,11 @@ namespace triton {
             auto expr2 = this->symbolicEngine->createSymbolicExpression(inst, mod, rdx, "DIV operation");
             /* Apply the taint for EDX */
             expr2->isTainted = this->taintEngine->taintUnion(rdx, src);
+            /* Divide error */
+            if (temp->evaluate() > 0xffffffffffffffff) {
+              this->exception = triton::arch::FAULT_DE;
+              return;
+            }
             break;
           }
 
@@ -5523,6 +5559,12 @@ namespace triton {
         this->undefined_s(inst, this->architecture->getRegister(ID_REG_X86_PF));
         this->undefined_s(inst, this->architecture->getRegister(ID_REG_X86_SF));
         this->undefined_s(inst, this->architecture->getRegister(ID_REG_X86_ZF));
+
+        /* Return an exception if the divisor is zero */
+        if (divisor->evaluate() == 0) {
+          this->exception = triton::arch::FAULT_DE;
+          return;
+        }
 
         /* Update the symbolic control flow */
         this->controlFlow_s(inst);
@@ -5596,7 +5638,8 @@ namespace triton {
 
         /* Check if the address is on a 16-byte boundary */
         if (m512byte & 0xF) {
-          // TODO @fvrmatteo: trigger an exception (https://github.com/JonathanSalwan/Triton/issues/872)
+          this->exception = triton::arch::FAULT_GP;
+          return;
         }
 
         /* Fetch the FPU, STX, SSE, EFER and CS implicit operands */
@@ -6062,7 +6105,8 @@ namespace triton {
 
         /* Check if the address is on a 16-byte boundary */
         if (m512byte & 0xF) {
-          // TODO @fvrmatteo: trigger an exception (https://github.com/JonathanSalwan/Triton/issues/872)
+          this->exception = triton::arch::FAULT_GP;
+          return;
         }
 
         /* Fetch the FPU, STX, SSE, EFER and CS implicit operands */
@@ -6521,7 +6565,8 @@ namespace triton {
 
         /* Check if the address is on a 16-byte boundary */
         if (m512byte & 0xF) {
-          // TODO @fvrmatteo: trigger an exception (https://github.com/JonathanSalwan/Triton/issues/872)
+          this->exception = triton::arch::FAULT_GP;
+          return;
         }
 
         /* Fetch the FPU, STX, SSE, EFER and CS implicit operands */
@@ -6825,7 +6870,8 @@ namespace triton {
 
         /* Check if the address is on a 16-byte boundary */
         if (m512byte & 0xF) {
-          // TODO @fvrmatteo: trigger an exception (https://github.com/JonathanSalwan/Triton/issues/872)
+          this->exception = triton::arch::FAULT_GP;
+          return;
         }
 
         /* Fetch the FPU, STX, SSE, EFER and CS implicit operands */
@@ -7139,7 +7185,8 @@ namespace triton {
             auto ax = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_AX));
             auto dividend = this->astCtxt->concat(this->symbolicEngine->getOperandAst(inst, dx), this->symbolicEngine->getOperandAst(inst, ax));
             /* res = DX:AX / Source */
-            auto result = this->astCtxt->extract((triton::bitsize::word - 1), 0, this->astCtxt->bvsdiv(dividend, this->astCtxt->sx(triton::bitsize::word, divisor)));
+            auto temp = this->astCtxt->bvsdiv(dividend, this->astCtxt->sx(triton::bitsize::word, divisor));
+            auto result = this->astCtxt->extract((triton::bitsize::word - 1), 0, temp);
             /* mod = DX:AX % Source */
             auto mod = this->astCtxt->extract((triton::bitsize::word - 1), 0, this->astCtxt->bvsmod(dividend, this->astCtxt->sx(triton::bitsize::word, divisor)));
             /* Create the symbolic expression for AX */
@@ -7159,7 +7206,8 @@ namespace triton {
             auto eax = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_EAX));
             auto dividend = this->astCtxt->concat(this->symbolicEngine->getOperandAst(inst, edx), this->symbolicEngine->getOperandAst(inst, eax));
             /* res = EDX:EAX / Source */
-            auto result = this->astCtxt->extract((triton::bitsize::dword - 1), 0, this->astCtxt->bvsdiv(dividend, this->astCtxt->sx(triton::bitsize::dword, divisor)));
+            auto temp = this->astCtxt->bvsdiv(dividend, this->astCtxt->sx(triton::bitsize::dword, divisor));
+            auto result = this->astCtxt->extract((triton::bitsize::dword - 1), 0, temp);
             /* mod = EDX:EAX % Source */
             auto mod = this->astCtxt->extract((triton::bitsize::dword - 1), 0, this->astCtxt->bvsmod(dividend, this->astCtxt->sx(triton::bitsize::dword, divisor)));
             /* Create the symbolic expression for EAX */
@@ -7179,7 +7227,8 @@ namespace triton {
             auto rax = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_RAX));
             auto dividend = this->astCtxt->concat(this->symbolicEngine->getOperandAst(inst, rdx), this->symbolicEngine->getOperandAst(inst, rax));
             /* res = RDX:RAX / Source */
-            auto result = this->astCtxt->extract((triton::bitsize::qword - 1), 0, this->astCtxt->bvsdiv(dividend, this->astCtxt->sx(triton::bitsize::qword, divisor)));
+            auto temp = this->astCtxt->bvsdiv(dividend, this->astCtxt->sx(triton::bitsize::qword, divisor));
+            auto result = this->astCtxt->extract((triton::bitsize::qword - 1), 0, temp);
             /* mod = RDX:RAX % Source */
             auto mod = this->astCtxt->extract((triton::bitsize::qword - 1), 0, this->astCtxt->bvsmod(dividend, this->astCtxt->sx(triton::bitsize::qword, divisor)));
             /* Create the symbolic expression for RAX */
@@ -7202,6 +7251,12 @@ namespace triton {
         this->undefined_s(inst, this->architecture->getRegister(ID_REG_X86_PF));
         this->undefined_s(inst, this->architecture->getRegister(ID_REG_X86_SF));
         this->undefined_s(inst, this->architecture->getRegister(ID_REG_X86_ZF));
+
+        /* Return an exception if the divisor is zero */
+        if (divisor->evaluate() == 0) {
+          this->exception = triton::arch::FAULT_DE;
+          return;
+        }
 
         /* Update the symbolic control flow */
         this->controlFlow_s(inst);
@@ -8125,7 +8180,7 @@ namespace triton {
       void x86Semantics::leave_s(triton::arch::Instruction& inst) {
         auto stack     = this->architecture->getStackPointer();
         auto base      = this->architecture->getParentRegister(ID_REG_X86_BP);
-        auto baseValue = this->architecture->getConcreteRegisterValue(base).convert_to<triton::uint64>();
+        auto baseValue = static_cast<triton::uint64>(this->architecture->getConcreteRegisterValue(base));
         auto bp1       = triton::arch::OperandWrapper(triton::arch::MemoryAccess(baseValue, base.getSize()));
         auto bp2       = triton::arch::OperandWrapper(this->architecture->getParentRegister(ID_REG_X86_BP));
         auto sp        = triton::arch::OperandWrapper(stack);
@@ -8542,6 +8597,12 @@ namespace triton {
 
         /* Update the symbolic control flow */
         this->controlFlow_s(inst);
+      }
+
+
+      void x86Semantics::int3_s(triton::arch::Instruction& inst) {
+        /* Return a breakpoint fault */
+        this->exception = triton::arch::FAULT_BP;
       }
 
 
@@ -10853,7 +10914,7 @@ namespace triton {
 
         // SEL  = COUNT[3:0];
         // MASK = (0FFH << (SEL * 8));
-        triton::uint64 sel   = op3->evaluate().convert_to<triton::uint64>() & 0x0f;
+        triton::uint64 sel   = static_cast<triton::uint64>(op3->evaluate()) & 0x0f;
         triton::uint128 mask = 0xff;
         mask = mask << (sel * 8);
 
@@ -10898,7 +10959,7 @@ namespace triton {
 
         // SEL  = COUNT[1:0];
         // MASK = (0FFFFFFFFH << (SEL * 32));
-        triton::uint64 sel   = op3->evaluate().convert_to<triton::uint64>() & 0x03;
+        triton::uint64 sel   = static_cast<triton::uint64>(op3->evaluate()) & 0x03;
         triton::uint128 mask = 0xffffffff;
         mask = mask << (sel * 32);
 
@@ -10943,7 +11004,7 @@ namespace triton {
 
         // SEL  = COUNT[0:0];
         // MASK = (0FFFFFFFFFFFFFFFFH << (SEL * 64));
-        triton::uint64 sel   = op3->evaluate().convert_to<triton::uint64>() & 0x1;
+        triton::uint64 sel   = static_cast<triton::uint64>(op3->evaluate()) & 0x1;
         triton::uint128 mask = 0xffffffffffffffff;
         mask = mask << (sel * 64);
 
@@ -11000,7 +11061,7 @@ namespace triton {
          * }
          */
         if (dst.getBitSize() == triton::bitsize::qword) {
-          sel = op3->evaluate().convert_to<triton::uint64>() & 0x3;
+          sel = static_cast<triton::uint64>(op3->evaluate()) & 0x3;
           switch (sel) {
             case 1: mask = mask << 16; break;
             case 2: mask = mask << 32; break;
@@ -11024,7 +11085,7 @@ namespace triton {
          * }
          */
         else {
-          sel = op3->evaluate().convert_to<triton::uint64>() & 0x7;
+          sel = static_cast<triton::uint64>(op3->evaluate()) & 0x7;
           switch (sel) {
             case 1: mask = mask << 16;  break;
             case 2: mask = mask << 32;  break;
@@ -11915,15 +11976,6 @@ namespace triton {
         auto op2 = this->symbolicEngine->getOperandAst(inst, src);
 
         /* Create the semantics */
-        if ((!op1->isSymbolized() && op1->evaluate() == 0) ||
-            (!op2->isSymbolized() && op2->evaluate() == 0)) {
-          auto node = this->astCtxt->bv(0, dst.getBitSize());
-          auto expr = this->symbolicEngine->createSymbolicExpression(inst, node, dst, "PMULHW operation");
-          this->taintEngine->setTaint(dst, false);
-          this->controlFlow_s(inst);
-          return;
-        }
-
         std::vector<triton::ast::SharedAbstractNode> pck;
         pck.reserve(dst.getSize() / triton::size::word);
 
@@ -11957,15 +12009,6 @@ namespace triton {
         auto op2 = this->symbolicEngine->getOperandAst(inst, src);
 
         /* Create the semantics */
-        if ((!op1->isSymbolized() && op1->evaluate() == 0) ||
-            (!op2->isSymbolized() && op2->evaluate() == 0)) {
-          auto node = this->astCtxt->bv(0, dst.getBitSize());
-          auto expr = this->symbolicEngine->createSymbolicExpression(inst, node, dst, "PMULLD operation");
-          this->taintEngine->setTaint(dst, false);
-          this->controlFlow_s(inst);
-          return;
-        }
-
         std::vector<triton::ast::SharedAbstractNode> pck;
         pck.reserve(dst.getSize() / triton::size::dword);
 
@@ -11999,15 +12042,6 @@ namespace triton {
         auto op2 = this->symbolicEngine->getOperandAst(inst, src);
 
         /* Create the semantics */
-        if ((!op1->isSymbolized() && op1->evaluate() == 0) ||
-            (!op2->isSymbolized() && op2->evaluate() == 0)) {
-          auto node = this->astCtxt->bv(0, dst.getBitSize());
-          auto expr = this->symbolicEngine->createSymbolicExpression(inst, node, dst, "PMULLW operation");
-          this->taintEngine->setTaint(dst, false);
-          this->controlFlow_s(inst);
-          return;
-        }
-
         std::vector<triton::ast::SharedAbstractNode> pck;
         pck.reserve(dst.getSize() / triton::size::word);
 
@@ -12029,6 +12063,57 @@ namespace triton {
 
         /* Update the symbolic control flow */
         this->controlFlow_s(inst);
+      }
+
+
+      void x86Semantics::pmuludq_s(triton::arch::Instruction& inst) {
+        triton::ast::SharedAbstractNode node = nullptr;
+        auto& dst = inst.operands[0];
+        auto& src = inst.operands[1];
+
+        /* Create symbolic operands */
+        auto op1 = this->symbolicEngine->getOperandAst(inst, dst);
+        auto op2 = this->symbolicEngine->getOperandAst(inst, src);
+
+        /* Create the semantics */
+        switch (dst.getBitSize()) {
+          case triton::bitsize::qword: {
+            auto n1 = this->astCtxt->zx(triton::bitsize::dword, this->astCtxt->extract(triton::bitsize::dword-1, 0, op1));
+            auto n2 = this->astCtxt->zx(triton::bitsize::dword, this->astCtxt->extract(triton::bitsize::dword-1, 0, op2));
+            node = this->astCtxt->bvmul(n1, n2);
+            break;
+          }
+
+          case triton::bitsize::dqword: {
+            std::vector<triton::ast::SharedAbstractNode> pck;
+            pck.reserve(2);
+
+            auto n1 = this->astCtxt->zx(triton::bitsize::dword, this->astCtxt->extract(triton::bitsize::dword-1, 0, op1));
+            auto n2 = this->astCtxt->zx(triton::bitsize::dword, this->astCtxt->extract(triton::bitsize::dword-1, 0, op2));
+
+            auto n3 = this->astCtxt->zx(triton::bitsize::dword, this->astCtxt->extract(triton::bitsize::qword+triton::bitsize::dword-1, triton::bitsize::qword, op1));
+            auto n4 = this->astCtxt->zx(triton::bitsize::dword, this->astCtxt->extract(triton::bitsize::qword+triton::bitsize::dword-1, triton::bitsize::qword, op2));
+
+            pck.push_back(this->astCtxt->bvmul(n3, n4));
+            pck.push_back(this->astCtxt->bvmul(n1, n2));
+
+            node = this->astCtxt->concat(pck);
+            break;
+          }
+
+          default:
+            throw triton::exceptions::Semantics("x86Semantics::pmuludq_s(): Invalid operand size.");
+        }
+
+        /* Create symbolic expression */
+        auto expr = this->symbolicEngine->createSymbolicExpression(inst, node, dst, "PMULUDQ operation");
+
+        /* Apply the taint */
+        expr->isTainted = this->taintEngine->taintUnion(dst, src);
+
+        /* Update the symbolic control flow */
+        this->controlFlow_s(inst);
+        return;
       }
 
 
@@ -12063,7 +12148,7 @@ namespace triton {
       void x86Semantics::pop_s(triton::arch::Instruction& inst) {
         bool  stackRelative = false;
         auto  stack         = this->architecture->getStackPointer();
-        auto  stackValue    = this->architecture->getConcreteRegisterValue(stack).convert_to<triton::uint64>();
+        auto  stackValue    = static_cast<triton::uint64>(this->architecture->getConcreteRegisterValue(stack));
         auto& dst           = inst.operands[0];
         auto  src           = triton::arch::OperandWrapper(triton::arch::MemoryAccess(stackValue, dst.getSize()));
 
@@ -12120,7 +12205,7 @@ namespace triton {
 
       void x86Semantics::popal_s(triton::arch::Instruction& inst) {
         auto stack      = this->architecture->getStackPointer();
-        auto stackValue = this->architecture->getConcreteRegisterValue(stack).convert_to<triton::uint64>();
+        auto stackValue = static_cast<triton::uint64>(this->architecture->getConcreteRegisterValue(stack));
         auto dst1       = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_EDI));
         auto dst2       = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_ESI));
         auto dst3       = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_EBP));
@@ -12174,7 +12259,7 @@ namespace triton {
 
       void x86Semantics::popf_s(triton::arch::Instruction& inst) {
         auto  stack      = this->architecture->getStackPointer();
-        auto  stackValue = this->architecture->getConcreteRegisterValue(stack).convert_to<triton::uint64>();
+        auto  stackValue = static_cast<triton::uint64>(this->architecture->getConcreteRegisterValue(stack));
         auto  dst1       = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_CF));
         auto  dst2       = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_PF));
         auto  dst3       = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_AF));
@@ -12237,7 +12322,7 @@ namespace triton {
 
       void x86Semantics::popfd_s(triton::arch::Instruction& inst) {
         auto  stack      = this->architecture->getStackPointer();
-        auto  stackValue = this->architecture->getConcreteRegisterValue(stack).convert_to<triton::uint64>();
+        auto  stackValue = static_cast<triton::uint64>(this->architecture->getConcreteRegisterValue(stack));
         auto  dst1       = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_CF));
         auto  dst2       = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_PF));
         auto  dst3       = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_AF));
@@ -12315,7 +12400,7 @@ namespace triton {
 
       void x86Semantics::popfq_s(triton::arch::Instruction& inst) {
         auto  stack      = this->architecture->getStackPointer();
-        auto  stackValue = this->architecture->getConcreteRegisterValue(stack).convert_to<triton::uint64>();
+        auto  stackValue = static_cast<triton::uint64>(this->architecture->getConcreteRegisterValue(stack));
         auto  dst1       = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_CF));
         auto  dst2       = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_PF));
         auto  dst3       = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_AF));
@@ -12421,6 +12506,49 @@ namespace triton {
 
         /* Only specify that the instruction performs an implicit memory read */
         this->symbolicEngine->getOperandAst(inst, src);
+
+        /* Update the symbolic control flow */
+        this->controlFlow_s(inst);
+      }
+
+
+      void x86Semantics::pshufb_s(triton::arch::Instruction& inst) {
+        auto& dst = inst.operands[0];
+        auto& src = inst.operands[1];
+
+        /* Create symbolic operands */
+        auto op1 = this->symbolicEngine->getOperandAst(inst, dst);
+        auto op2 = this->symbolicEngine->getOperandAst(inst, src);
+
+        std::vector<triton::ast::SharedAbstractNode> pack;
+        pack.reserve(dst.getSize());
+
+        /* Create the semantics */
+        for (int i = dst.getBitSize(); i > 0;) {
+          i -= 8;
+          int control = i+7;
+          int index_low = i;
+          int index_high = i+(dst.getSize() == 8 ? 2 : 3);
+          pack.push_back(
+            this->astCtxt->bvmul(
+              this->astCtxt->zx(triton::bitsize::byte-1, this->astCtxt->bvnot(
+                this->astCtxt->extract(control, control, op2))),
+              this->astCtxt->extract(triton::bitsize::byte-1, 0,
+                this->astCtxt->bvlshr(
+                  op1,
+                  this->astCtxt->bvmul(
+                    this->astCtxt->zx(triton::bitsize::dqword-(index_high-index_low)-1,
+                      this->astCtxt->extract(index_high, index_low, op2)),
+                    this->astCtxt->bv(8, triton::bitsize::dqword))))));
+        }
+
+        auto node = this->astCtxt->concat(pack);
+
+        /* Create symbolic expression */
+        auto expr = this->symbolicEngine->createSymbolicExpression(inst, node, dst, "PSHUFD operation");
+
+        /* Spread taint */
+        expr->isTainted = this->taintEngine->taintAssignment(dst, src);
 
         /* Update the symbolic control flow */
         this->controlFlow_s(inst);
@@ -13704,7 +13832,7 @@ namespace triton {
 
       void x86Semantics::pushal_s(triton::arch::Instruction& inst) {
         auto stack      = this->architecture->getStackPointer();
-        auto stackValue = this->architecture->getConcreteRegisterValue(stack).convert_to<triton::uint64>();
+        auto stackValue = static_cast<triton::uint64>(this->architecture->getConcreteRegisterValue(stack));
         auto dst1       = triton::arch::OperandWrapper(triton::arch::MemoryAccess(stackValue-(stack.getSize() * 1), stack.getSize()));
         auto dst2       = triton::arch::OperandWrapper(triton::arch::MemoryAccess(stackValue-(stack.getSize() * 2), stack.getSize()));
         auto dst3       = triton::arch::OperandWrapper(triton::arch::MemoryAccess(stackValue-(stack.getSize() * 3), stack.getSize()));
@@ -14140,20 +14268,22 @@ namespace triton {
 
 
       void x86Semantics::rdtsc_s(triton::arch::Instruction& inst) {
+        auto src  = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_TSC));
         auto dst1 = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_EDX));
         auto dst2 = triton::arch::OperandWrapper(this->architecture->getRegister(ID_REG_X86_EAX));
 
         /* Create symbolic operands */
-        auto op1 = this->astCtxt->bv(0, dst1.getBitSize());
-        auto op2 = this->astCtxt->bv(this->symbolicEngine->getSymbolicExpressions().size(), dst2.getBitSize());
+        auto op   = this->symbolicEngine->getOperandAst(inst, src);
+        auto high = this->astCtxt->extract((triton::bitsize::qword - 1), triton::bitsize::dword, op);
+        auto low  = this->astCtxt->extract((triton::bitsize::dword - 1), 0, op);
 
         /* Create symbolic expression */
-        auto expr1 = this->symbolicEngine->createSymbolicExpression(inst, op1, dst1, "RDTSC EDX operation");
-        auto expr2 = this->symbolicEngine->createSymbolicExpression(inst, op2, dst2, "RDTSC EAX operation");
+        auto expr1 = this->symbolicEngine->createSymbolicExpression(inst, high, dst1, "RDTSC EDX operation");
+        auto expr2 = this->symbolicEngine->createSymbolicExpression(inst, low, dst2, "RDTSC EAX operation");
 
         /* Spread taint */
-        expr1->isTainted = this->taintEngine->setTaint(dst1, triton::engines::taint::UNTAINTED);
-        expr2->isTainted = this->taintEngine->setTaint(dst2, triton::engines::taint::UNTAINTED);
+        expr1->isTainted = this->taintEngine->taintUnion(dst1, src);
+        expr2->isTainted = this->taintEngine->taintUnion(dst2, src);
 
         /* Update the symbolic control flow */
         this->controlFlow_s(inst);
@@ -14162,7 +14292,7 @@ namespace triton {
 
       void x86Semantics::ret_s(triton::arch::Instruction& inst) {
         auto stack      = this->architecture->getStackPointer();
-        auto stackValue = this->architecture->getConcreteRegisterValue(stack).convert_to<triton::uint64>();
+        auto stackValue = static_cast<triton::uint64>(this->architecture->getConcreteRegisterValue(stack));
         auto pc         = triton::arch::OperandWrapper(this->architecture->getProgramCounter());
         auto sp         = triton::arch::OperandWrapper(triton::arch::MemoryAccess(stackValue, stack.getSize()));
 
@@ -16724,7 +16854,7 @@ namespace triton {
           }
         };
 
-        auto ctrl = op3->evaluate().convert_to<triton::uint8>();
+        auto ctrl = static_cast<triton::uint8>(op3->evaluate());
         auto high = permute((ctrl >> 4) & 0b00000011);
         auto low = permute(ctrl & 0b00000011);
 
@@ -17366,15 +17496,6 @@ namespace triton {
         auto op2 = this->symbolicEngine->getOperandAst(inst, src2);
 
         /* Create the semantics */
-        if ((!op1->isSymbolized() && op1->evaluate() == 0) ||
-            (!op2->isSymbolized() && op2->evaluate() == 0)) {
-          auto node = this->astCtxt->bv(0, dst.getBitSize());
-          auto expr = this->symbolicEngine->createSymbolicExpression(inst, node, dst, "VPMULHW operation");
-          this->taintEngine->setTaint(dst, false);
-          this->controlFlow_s(inst);
-          return;
-        }
-
         std::vector<triton::ast::SharedAbstractNode> pck;
         pck.reserve(dst.getSize() / triton::size::word);
 
@@ -17409,15 +17530,6 @@ namespace triton {
         auto op2 = this->symbolicEngine->getOperandAst(inst, src2);
 
         /* Create the semantics */
-        if ((!op1->isSymbolized() && op1->evaluate() == 0) ||
-            (!op2->isSymbolized() && op2->evaluate() == 0)) {
-          auto node = this->astCtxt->bv(0, dst.getBitSize());
-          auto expr = this->symbolicEngine->createSymbolicExpression(inst, node, dst, "VPMULLW operation");
-          this->taintEngine->setTaint(dst, false);
-          this->controlFlow_s(inst);
-          return;
-        }
-
         std::vector<triton::ast::SharedAbstractNode> pck;
         pck.reserve(dst.getSize() / triton::size::word);
 

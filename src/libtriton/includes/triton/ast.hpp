@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <triton/astEnums.hpp>
+#include <triton/coreUtils.hpp>
 #include <triton/cpuSize.hpp>
 #include <triton/dllexport.hpp>
 #include <triton/exceptions.hpp>
@@ -935,7 +936,15 @@ namespace triton {
     //! Gets the value of an integer node.
     template <typename T> T inline getInteger(const SharedAbstractNode& node) {
       if (node->getType() == INTEGER_NODE) {
-        return reinterpret_cast<IntegerNode*>(node.get())->getInteger().convert_to<T>();
+        return static_cast<T>(reinterpret_cast<IntegerNode*>(node.get())->getInteger());
+      }
+      throw triton::exceptions::Ast("triton::ast::getInteger(): You must provide an INTEGER_NODE.");
+    }
+
+    //! std::string specialization
+    template <> std::string inline getInteger(const SharedAbstractNode& node) {
+      if (node->getType() == INTEGER_NODE) {
+        return triton::utils::toString(reinterpret_cast<triton::ast::IntegerNode*>(node.get())->getInteger());
       }
       throw triton::exceptions::Ast("triton::ast::getInteger(): You must provide an INTEGER_NODE.");
     }

@@ -7,7 +7,7 @@
 
 
 #include <iostream>
-#include <triton/api.hpp>
+#include <triton/context.hpp>
 #include <triton/x86Specifications.hpp>
 
 using namespace triton;
@@ -15,19 +15,19 @@ using namespace triton::arch;
 
 
 struct op {
-  unsigned int    addr;
-  unsigned char*  inst;
-  unsigned int    size;
+  unsigned int  addr;
+  const void*   inst;
+  unsigned int  size;
 };
 
 struct op trace[] = {
-  {0x400017, (unsigned char *)"\x48\x31\xc0", 3}, /* xor rax, rax */
-  {0x0,      nullptr,                         0}
+  {0x400017, "\x48\x31\xc0", 3}, /* xor rax, rax */
+  {0x0,      nullptr,        0}
 };
 
 
 /* if (bvxor x x) -> (_ bv0 x_size) */
-ast::SharedAbstractNode xor_simplification(API&, const ast::SharedAbstractNode& snode) {
+ast::SharedAbstractNode xor_simplification(Context& ctx, const ast::SharedAbstractNode& snode) {
   ast::AbstractNode* node = snode.get();
 
   if (node->getType() == ast::ZX_NODE) {
@@ -44,16 +44,16 @@ ast::SharedAbstractNode xor_simplification(API&, const ast::SharedAbstractNode& 
 
 
 int main(int ac, const char **av) {
+  triton::Context ctx;
 
-  triton::API api;
   /* Set the arch */
-  api.setArchitecture(ARCH_X86_64);
+  ctx.setArchitecture(ARCH_X86_64);
 
   /* Record a simplification callback */
-  api.addCallback(callbacks::SYMBOLIC_SIMPLIFICATION, xor_simplification);
+  ctx.addCallback(callbacks::SYMBOLIC_SIMPLIFICATION, xor_simplification);
 
   /* optional - Update register state */
-  api.setConcreteRegisterValue(api.registers.x86_rax, 12345);
+  ctx.setConcreteRegisterValue(ctx.registers.x86_rax, 12345);
 
   for (unsigned int i = 0; trace[i].inst; i++) {
     /* Build an instruction */
@@ -66,7 +66,7 @@ int main(int ac, const char **av) {
     inst.setAddress(trace[i].addr);
 
     /* Process everything */
-    api.processing(inst);
+    ctx.processing(inst);
 
     /* Display all symbolic expression of the instruction */
     std::cout << inst << std::endl;

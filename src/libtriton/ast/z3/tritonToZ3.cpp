@@ -7,6 +7,7 @@
 
 #include <vector>
 
+#include <triton/coreUtils.hpp>
 #include <triton/cpuSize.hpp>
 #include <triton/exceptions.hpp>
 #include <triton/symbolicExpression.hpp>
@@ -318,8 +319,7 @@ namespace triton {
           /* If the conversion is used to evaluate a node, we concretize symbolic variables */
           if (this->isEval) {
             triton::uint512 value = reinterpret_cast<triton::ast::VariableNode*>(node.get())->evaluate();
-            std::string strValue(value.convert_to<std::string>());
-            return this->context.bv_val(strValue.c_str(), symVar->getSize());
+            return this->context.bv_val(triton::utils::toString(value).c_str(), symVar->getSize());
           }
 
           /* Otherwise, we keep the symbolic variables for a real conversion */

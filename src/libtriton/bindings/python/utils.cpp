@@ -249,7 +249,11 @@ namespace triton {
 
         v = _PyLong_New(ndigits);
         digit* p = v->ob_digit;
+        #if PY_VERSION_HEX >= 0x030a00f0
+        Py_SET_SIZE(v, ndigits);
+        #else
         Py_SIZE(v) = ndigits;
+        #endif
         while (value) {
           *p++ = static_cast<digit>(value & PyLong_MASK);
           value >>= PyLong_SHIFT;
@@ -282,7 +286,11 @@ namespace triton {
 
         v = _PyLong_New(ndigits);
         digit* p = v->ob_digit;
+        #if PY_VERSION_HEX >= 0x030a00f0
+        Py_SET_SIZE(v, ndigits);
+        #else
         Py_SIZE(v) = ndigits;
+        #endif
         while (value) {
           *p++ = static_cast<digit>(value & PyLong_MASK);
           value >>= PyLong_SHIFT;
@@ -318,7 +326,11 @@ namespace triton {
 
         v = _PyLong_New(ndigits);
         digit* p = v->ob_digit;
+        #if PY_VERSION_HEX >= 0x030a00f0
+        Py_SET_SIZE(v, ndigits);
+        #else
         Py_SIZE(v) = ndigits;
+        #endif
         while (value) {
           *p++ = static_cast<digit>(value & PyLong_MASK);
           value >>= PyLong_SHIFT;
@@ -336,7 +348,7 @@ namespace triton {
 
         // it is mandatory to let Python deal with small numbers (static objects)
         if (value <= std::numeric_limits<long>::max())
-          return PyInt_FromLong(value.convert_to<long>());
+          return PyInt_FromLong(static_cast<long>(value));
 
         /* Count the number of Python digits. */
         t = value;
@@ -347,9 +359,13 @@ namespace triton {
 
         v = _PyLong_New(ndigits);
         digit* p = v->ob_digit;
+        #if PY_VERSION_HEX >= 0x030a00f0
+        Py_SET_SIZE(v, ndigits);
+        #else
         Py_SIZE(v) = ndigits;
+        #endif
         while (value) {
-          *p++ = (value & PyLong_MASK).convert_to<digit>();
+          *p++ = static_cast<digit>(value & PyLong_MASK);
           value >>= PyLong_SHIFT;
         }
 
@@ -365,7 +381,7 @@ namespace triton {
 
         // it is mandatory to let Python deal with small numbers (static objects)
         if (value <= std::numeric_limits<long>::max())
-          return PyInt_FromLong(value.convert_to<long>());
+          return PyInt_FromLong(static_cast<long>(value));
 
         /* Count the number of Python digits. */
         t = value;
@@ -376,9 +392,13 @@ namespace triton {
 
         v = _PyLong_New(ndigits);
         digit* p = v->ob_digit;
+        #if PY_VERSION_HEX >= 0x030a00f0
+        Py_SET_SIZE(v, ndigits);
+        #else
         Py_SIZE(v) = ndigits;
+        #endif
         while (value) {
-          *p++ = (value & PyLong_MASK).convert_to<digit>();
+          *p++ = static_cast<digit>(value & PyLong_MASK);
           value >>= PyLong_SHIFT;
         }
 
@@ -394,7 +414,7 @@ namespace triton {
 
         // it is mandatory to let Python deal with small numbers (static objects)
         if (value <= std::numeric_limits<long>::max())
-          return PyInt_FromLong(value.convert_to<long>());
+          return PyInt_FromLong(static_cast<long>(value));
 
         /* Count the number of Python digits. */
         t = value;
@@ -405,9 +425,13 @@ namespace triton {
 
         v = _PyLong_New(ndigits);
         digit* p = v->ob_digit;
+        #if PY_VERSION_HEX >= 0x030a00f0
+        Py_SET_SIZE(v, ndigits);
+        #else
         Py_SIZE(v) = ndigits;
+        #endif
         while (value) {
-          *p++ = (value & PyLong_MASK).convert_to<digit>();
+          *p++ = static_cast<digit>(value & PyLong_MASK);
           value >>= PyLong_SHIFT;
         }
 

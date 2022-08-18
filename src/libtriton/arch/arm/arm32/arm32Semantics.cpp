@@ -110,10 +110,10 @@ namespace triton {
         Arm32Semantics::Arm32Semantics(triton::arch::Architecture* architecture,
                                        triton::engines::symbolic::SymbolicEngine* symbolicEngine,
                                        triton::engines::taint::TaintEngine* taintEngine,
-                                       const triton::ast::SharedAstContext& astCtxt) {
+                                       const triton::ast::SharedAstContext& astCtxt) : astCtxt(astCtxt) {
 
           this->architecture    = architecture;
-          this->astCtxt         = astCtxt;
+          this->exception       = triton::arch::NO_FAULT;
           this->symbolicEngine  = symbolicEngine;
           this->taintEngine     = taintEngine;
 
@@ -128,7 +128,8 @@ namespace triton {
         }
 
 
-        bool Arm32Semantics::buildSemantics(triton::arch::Instruction& inst) {
+        triton::arch::exception_e Arm32Semantics::buildSemantics(triton::arch::Instruction& inst) {
+          this->exception = triton::arch::NO_FAULT;
           switch (inst.getType()) {
             case ID_INS_ADC:       this->adc_s(inst);           break;
             case ID_INS_ADD:       this->add_s(inst);           break;
@@ -149,6 +150,7 @@ namespace triton {
             case ID_INS_CMN:       this->cmn_s(inst);           break;
             case ID_INS_CMP:       this->cmp_s(inst);           break;
             case ID_INS_EOR:       this->eor_s(inst);           break;
+            case ID_INS_HINT:      this->nop_s(inst);           break;
             case ID_INS_IT:        this->it_s(inst);            break;
             case ID_INS_LDM:       this->ldm_s(inst);           break;
             case ID_INS_LDR:       this->ldr_s(inst);           break;
@@ -206,9 +208,10 @@ namespace triton {
             case ID_INS_UXTB:      this->uxtb_s(inst);          break;
             case ID_INS_UXTH:      this->uxth_s(inst);          break;
             default:
-              return false;
+              this->exception = triton::arch::FAULT_UD;
+              break;
           }
-          return true;
+          return this->exception;
         }
 
 
@@ -363,7 +366,7 @@ namespace triton {
           this->spreadTaint(inst, cond, expr, dst, this->taintEngine->taintUnion(dst, dst));
 
           /* Return the new stack value */
-          return node->evaluate().convert_to<triton::uint64>();
+          return static_cast<triton::uint64>(node->evaluate());
         }
 
 
@@ -388,7 +391,7 @@ namespace triton {
           this->spreadTaint(inst, cond, expr, dst, this->taintEngine->taintUnion(dst, dst));
 
           /* Return the new stack value */
-          return node->evaluate().convert_to<triton::uint64>();
+          return static_cast<triton::uint64>(node->evaluate());
         }
 
 
@@ -1810,7 +1813,7 @@ namespace triton {
             auto& dst = inst.operands[i];
 
             /* Compute memory address */
-            auto addr = baseNode->evaluate().convert_to<triton::uint64>() + size * (i-1);
+            auto addr = static_cast<triton::uint64>(baseNode->evaluate()) + size * (i - 1);
             auto src  = triton::arch::OperandWrapper(triton::arch::MemoryAccess(addr, size));
 
             /* Create symbolic operands */
@@ -1984,9 +1987,6 @@ namespace triton {
           auto& dst = inst.operands[0];
           auto& src = inst.operands[1];
 
-          /* Special behavior: Define that the size of the memory access is 8 bits */
-          src.getMemory().setBits(7, 0);
-
           /* Create symbolic operands */
           auto op = this->symbolicEngine->getOperandAst(inst, src);
 
@@ -2091,9 +2091,6 @@ namespace triton {
           auto& dst = inst.operands[0];
           auto& src = inst.operands[1];
 
-          /* Special behavior: Define that the size of the memory access is 16 bits */
-          src.getMemory().setBits(15, 0);
-
           /* Create symbolic operands */
           auto op = this->symbolicEngine->getOperandAst(inst, src);
 
@@ -2197,9 +2194,6 @@ namespace triton {
         void Arm32Semantics::ldrsb_s(triton::arch::Instruction& inst) {
           auto& dst = inst.operands[0];
           auto& src = inst.operands[1];
-
-          /* Special behavior: Define that the size of the memory access is 8 bits */
-          src.getMemory().setBits(7, 0);
 
           /* Create symbolic operands */
           auto op = this->symbolicEngine->getOperandAst(inst, src);
@@ -2441,9 +2435,6 @@ namespace triton {
         void Arm32Semantics::ldrsh_s(triton::arch::Instruction& inst)  {
           auto& dst = inst.operands[0];
           auto& src = inst.operands[1];
-
-          /* Special behavior: Define that the size of the memory access is 16 bits */
-          src.getMemory().setBits(15, 0);
 
           /* Create symbolic operands */
           auto op = this->symbolicEngine->getOperandAst(inst, src);
@@ -3067,7 +3058,7 @@ namespace triton {
           for (uint8_t i = 0; i < inst.operands.size(); i++) {
             auto& dst        = inst.operands[i];
             auto  stack      = this->architecture->getStackPointer();
-            auto  stackValue = this->architecture->getConcreteRegisterValue(stack).convert_to<triton::uint64>();
+            auto  stackValue = static_cast<triton::uint64>(this->architecture->getConcreteRegisterValue(stack));
             auto  src        = triton::arch::OperandWrapper(triton::arch::MemoryAccess(stackValue, size));
 
             /* Create symbolic operands */
@@ -3892,7 +3883,7 @@ namespace triton {
             auto& src = inst.operands[i];
 
             /* Compute memory address */
-            auto addr = baseNode->evaluate().convert_to<triton::uint64>() + size * (i-1);
+            auto addr = static_cast<triton::uint64>(baseNode->evaluate()) + size * (i-1);
             auto dst  = triton::arch::OperandWrapper(triton::arch::MemoryAccess(addr, size));
 
             /* Create symbolic operands */
@@ -3951,7 +3942,7 @@ namespace triton {
             auto& src = inst.operands[i];
 
             /* Compute memory address */
-            auto addr = baseNode->evaluate().convert_to<triton::uint64>() + size * i;
+            auto addr = static_cast<triton::uint64>(baseNode->evaluate()) + size * i;
             auto dst  = triton::arch::OperandWrapper(triton::arch::MemoryAccess(addr, size));
 
             /* Create symbolic operands */
@@ -4075,9 +4066,6 @@ namespace triton {
 
           /* Create symbolic operands */
           auto op = this->getArm32SourceOperandAst(inst, src);
-
-          /* Special behavior: Define that the size of the memory access is 8 bits */
-          dst.getMemory().setBits(7, 0);
 
           /* Create the semantics */
           auto node  = this->astCtxt->extract(7, 0, op);
@@ -4306,9 +4294,6 @@ namespace triton {
 
           /* Create symbolic operands */
           auto op = this->getArm32SourceOperandAst(inst, src);
-
-          /* Special behavior: Define that the size of the memory access is 16 bits */
-          dst.getMemory().setBits(15, 0);
 
           /* Create the semantics */
           auto node1 = this->astCtxt->extract(15, 0, op);

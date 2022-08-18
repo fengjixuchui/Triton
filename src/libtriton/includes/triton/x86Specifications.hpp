@@ -63,6 +63,9 @@ namespace triton {
           TRITON_EXPORT triton::arch::x86::prefix_e capstonePrefixToTritonPrefix(triton::uint32 id) const;
       };
 
+      //! x86 NOP instruction
+      const triton::arch::Instruction nop = triton::arch::Instruction("\x90", 1);
+
       //! The list of opcodes.
       enum instruction_e {
         ID_INS_INVALID = 0, //!< invalid

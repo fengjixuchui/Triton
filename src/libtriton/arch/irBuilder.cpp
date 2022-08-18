@@ -57,9 +57,9 @@ namespace triton {
     }
 
 
-    bool IrBuilder::buildSemantics(triton::arch::Instruction& inst) {
+    triton::arch::exception_e IrBuilder::buildSemantics(triton::arch::Instruction& inst) {
       triton::arch::architecture_e arch = this->architecture->getArchitecture();
-      bool ret = false;
+      triton::arch::exception_e ret = triton::arch::NO_FAULT;
 
       if (arch == triton::arch::ARCH_INVALID)
         throw triton::exceptions::IrBuilder("IrBuilder::buildSemantics(): You must define an architecture.");
@@ -101,6 +101,25 @@ namespace triton {
     }
 
 
+    triton::arch::exception_e IrBuilder::buildSemantics(triton::arch::BasicBlock& block) {
+      triton::arch::exception_e ret = triton::arch::NO_FAULT;
+      triton::usize count = block.getSize();
+
+      for (auto& inst : block.getInstructions()) {
+        ret = this->buildSemantics(inst);
+        if (ret != triton::arch::NO_FAULT) {
+          return ret;
+        }
+        count--;
+        if (inst.isControlFlow() && count) {
+          throw triton::exceptions::IrBuilder("IrBuilder::buildSemantics(): Do not add instructions in a block after a branch instruction.");
+        }
+      }
+
+      return ret;
+    }
+
+
     void IrBuilder::preIrInit(triton::arch::Instruction& inst) {
       /* Clear previous expressions if exist */
       inst.symbolicExpressions.clear();
@@ -114,7 +133,7 @@ namespace triton {
 
       /* Update instruction address if undefined */
       if (!inst.getAddress()) {
-        inst.setAddress(this->architecture->getConcreteRegisterValue(this->architecture->getProgramCounter()).convert_to<triton::uint64>());
+        inst.setAddress(static_cast<triton::uint64>(this->architecture->getConcreteRegisterValue(this->architecture->getProgramCounter())));
       }
     }
 

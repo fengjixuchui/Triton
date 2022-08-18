@@ -75,7 +75,13 @@ namespace triton {
 
             //! Converts a capstone's instruction id to a triton's instruction id.
             TRITON_EXPORT triton::uint32 capstoneInstructionToTritonInstruction(triton::uint32 id) const;
+
+            //! Returns memory access size if it is specified by instruction.
+            TRITON_EXPORT triton::uint32 getMemoryOperandSpecialSize(triton::uint32 id) const;
         };
+
+        //! AArch64 NOP instruction
+        const triton::arch::Instruction nop = triton::arch::Instruction("\x1f\x20\x03\xd5", 4);
 
         //! The list of opcodes.
         enum instruction_e {

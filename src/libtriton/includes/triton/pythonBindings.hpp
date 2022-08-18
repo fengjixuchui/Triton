@@ -9,8 +9,13 @@
 #define TRITONPYTHONBINDINGS_H
 
 #include <Python.h>
-#include <longintrepr.h>
-#if _WIN32
+#if __has_include(<cpython/longintrepr.h>)
+  #include <cpython/longintrepr.h>
+#else
+  #include <longintrepr.h>
+#endif
+
+#if defined(_WIN32) && !defined(__WINE__)
   #include <cmath>
   #define _hypot hypot
 #endif
@@ -81,6 +86,9 @@ namespace triton {
       //! Initializes the SHIFT python namespace.
       void initShiftsNamespace(PyObject* shiftDict);
 
+      //! Initializes the EXCEPTION python namespace.
+      void initExceptionNamespace(PyObject* exceptionDict);
+
       //! Initializes the EXTEND python namespace.
       void initExtendNamespace(PyObject* extendDict);
 
@@ -95,6 +103,9 @@ namespace triton {
 
       //! Initializes the SOLVER_STATE python namespace.
       void initSolverStateNamespace(PyObject* solverStateDict);
+
+      //! Initializes the STUBS python namespace.
+      void initStubsNamespace(PyObject* stubsDict);
 
       //! Initializes the SYMBOLIC python namespace.
       void initSymbolicNamespace(PyObject* symbolicDict);

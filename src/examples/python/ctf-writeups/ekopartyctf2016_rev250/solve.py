@@ -178,7 +178,7 @@ def emulate(ctx, pc):
             pc = ctx.getConcreteRegisterValue(ctx.registers.rip)
             continue
 
-        if ctx.processing(instruction) == False:
+        if ctx.processing(instruction) == EXCEPTION.FAULT_UD:
             break
 
         #if instruction.isSymbolized():
@@ -233,7 +233,7 @@ def loadBinary(ctx, binary):
         size   = phdr.physical_size
         vaddr  = phdr.virtual_address
         debug('[+] Loading 0x%06x - 0x%06x' %(vaddr, vaddr+size))
-        ctx.setConcreteMemoryAreaValue(vaddr, phdr.content)
+        ctx.setConcreteMemoryAreaValue(vaddr, list(phdr.content))
     return
 
 

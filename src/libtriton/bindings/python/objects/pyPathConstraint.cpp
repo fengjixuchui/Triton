@@ -11,6 +11,8 @@
 #include <triton/exceptions.hpp>
 #include <triton/pathConstraint.hpp>
 
+#include <iostream>
+
 
 
 /* setup doctest context

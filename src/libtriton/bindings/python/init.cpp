@@ -92,7 +92,13 @@ namespace triton {
         initCpuSizeNamespace(cpuSizeDict);
         PyObject* idCpuSizeClass = xPyClass_New(nullptr, cpuSizeDict, xPyString_FromString("CPUSIZE"));
 
-        /* Create the EXTEND namespace ================================================================ */
+        /* Create the EXCEPTION namespace ============================================================ */
+
+        PyObject* exceptionDict = xPyDict_New();
+        initExceptionNamespace(exceptionDict);
+        PyObject* idExceptionClass = xPyClass_New(nullptr, exceptionDict, xPyString_FromString("EXCEPTION"));
+
+        /* Create the EXTEND namespace =============================================================== */
 
         PyObject* extendDict = xPyDict_New();
         initExtendNamespace(extendDict);
@@ -146,6 +152,12 @@ namespace triton {
         initSolverStateNamespace(solverStateDict);
         PyObject* idSolverStateClass = xPyClass_New(nullptr, solverStateDict, xPyString_FromString("SOLVER_STATE"));
 
+        /* Create the STUBS namespace ============================================================= */
+
+        PyObject* stubsDict = xPyDict_New();
+        initStubsNamespace(stubsDict);
+        PyObject* idStubsClass = xPyClass_New(nullptr, stubsDict, xPyString_FromString("STUBS"));
+
         /* Create the SYMBOLIC namespace ============================================================= */
 
         PyObject* symbolicDict = xPyDict_New();
@@ -168,6 +180,7 @@ namespace triton {
         PyModule_AddObject(triton::bindings::python::tritonModule, "CALLBACK",            idCallbackClass);
         PyModule_AddObject(triton::bindings::python::tritonModule, "CONDITION",           idConditionsClass);
         PyModule_AddObject(triton::bindings::python::tritonModule, "CPUSIZE",             idCpuSizeClass);
+        PyModule_AddObject(triton::bindings::python::tritonModule, "EXCEPTION",           idExceptionClass);
         PyModule_AddObject(triton::bindings::python::tritonModule, "EXTEND",              idExtendClass);
         PyModule_AddObject(triton::bindings::python::tritonModule, "MODE",                idModeClass);
         PyModule_AddObject(triton::bindings::python::tritonModule, "OPCODE",              idOpcodesClass);
@@ -177,6 +190,7 @@ namespace triton {
         PyModule_AddObject(triton::bindings::python::tritonModule, "SHIFT",               idShiftsClass);
         PyModule_AddObject(triton::bindings::python::tritonModule, "SOLVER",              idSolverClass);
         PyModule_AddObject(triton::bindings::python::tritonModule, "SOLVER_STATE",        idSolverStateClass);
+        PyModule_AddObject(triton::bindings::python::tritonModule, "STUBS",               idStubsClass);
         PyModule_AddObject(triton::bindings::python::tritonModule, "SYMBOLIC",            idSymbolicClass);
         PyModule_AddObject(triton::bindings::python::tritonModule, "VERSION",             idVersionClass);
 

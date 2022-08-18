@@ -14,22 +14,6 @@ class TestAArch64Disass(unittest.TestCase):
         self.ctx = TritonContext()
         self.ctx.setArchitecture(ARCH.AARCH64)
 
-    def test_inst1(self):
-        inst = Instruction(b"\x80\x46\xc2\xd2") # movz x0, #0x1234, lsl #32
-
-        self.ctx.disassembly(inst)
-        self.assertEqual(inst.getDisassembly(), "movz x0, #0x1234, lsl #32")
-
-        self.assertEqual(len(inst.getOperands()), 2)
-
-        op0 = inst.getOperands()[0]
-        op1 = inst.getOperands()[1]
-
-        self.assertEqual(op0.getName(), "x0")
-        self.assertEqual(op1.getValue(), 0x1234)
-        self.assertEqual(op1.getShiftType(), SHIFT.ARM.LSL)
-        self.assertEqual(op1.getShiftImmediate(), 32)
-
     def test_inst2(self):
         inst = Instruction(b"\xe1\x0b\x40\xb9") # ldr w1, [sp, #8]
 
@@ -297,12 +281,12 @@ class TestX64Disass(unittest.TestCase):
         ]
         raw = b"".join(code)
         self.ctx.setConcreteMemoryAreaValue(0x1000, raw)
-        insts = self.ctx.disassembly(0x1000)
-        self.assertEqual(str(insts), '[0x1000: movabs rcx, 0x1122334455667788, '
-                                      '0x100a: inc rcx, '
-                                      '0x100d: mov rax, rcx, '
-                                      '0x1010: leave, '
-                                      '0x1011: ret]')
+        block = self.ctx.disassembly(0x1000)
+        self.assertEqual(str(block.getInstructions()), '[0x1000: movabs rcx, 0x1122334455667788, '
+                                                       '0x100a: inc rcx, '
+                                                       '0x100d: mov rax, rcx, '
+                                                       '0x1010: leave, '
+                                                       '0x1011: ret]')
 
     def test_inst4(self):
         code = [
@@ -315,12 +299,12 @@ class TestX64Disass(unittest.TestCase):
         ]
         raw = b"".join(code)
         self.ctx.setConcreteMemoryAreaValue(0x1000, raw)
-        insts = self.ctx.disassembly(0x1000)
-        self.assertEqual(str(insts), '[0x1000: movabs rcx, 0x1122334455667788, '
-                                      '0x100a: inc rcx, '
-                                      '0x100d: mov rax, rcx, '
-                                      '0x1010: leave, '
-                                      '0x1011: jmp rax]')
+        block = self.ctx.disassembly(0x1000)
+        self.assertEqual(str(block.getInstructions()), '[0x1000: movabs rcx, 0x1122334455667788, '
+                                                       '0x100a: inc rcx, '
+                                                       '0x100d: mov rax, rcx, '
+                                                       '0x1010: leave, '
+                                                       '0x1011: jmp rax]')
 
     def test_inst5(self):
         code = [
@@ -345,3 +329,26 @@ class TestX64Disass(unittest.TestCase):
         raw = b"".join(code)
         self.ctx.setConcreteMemoryAreaValue(0x1000, raw)
         self.assertRaises(Exception, self.ctx.disassembly, 0x1000)
+
+    def test_inst7(self):
+        block = BasicBlock([
+            Instruction(b"\x48\xb9\x88\x77\x66\x55\x44\x33\x22\x11"), # mov rcx, 0x1122334455667788
+            Instruction(b"\x48\xff\xc1"),                             # inc rcx
+            Instruction(b"\x48\x89\xc8"),                             # mov rax, rcx
+            Instruction(b"\xc9"),                                     # leave
+            Instruction(b"\xc3"),                                     # ret
+        ])
+        self.ctx.disassembly(block)
+        self.assertEqual(block.getInstructions()[0].getAddress(), 0x0)
+
+        self.ctx.disassembly(block, 0x1000)
+        self.assertEqual(block.getInstructions()[0].getAddress(), 0x1000)
+
+        self.ctx.disassembly(block)
+        self.assertEqual(block.getInstructions()[0].getAddress(), 0x0)
+
+        self.ctx.processing(block)
+        self.assertEqual(block.getInstructions()[0].getAddress(), 0x0)
+
+        self.ctx.processing(block, 0x112233)
+        self.assertEqual(block.getInstructions()[0].getAddress(), 0x112233)

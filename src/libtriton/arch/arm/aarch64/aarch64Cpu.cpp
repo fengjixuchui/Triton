@@ -6,6 +6,7 @@
 */
 
 #include <algorithm>
+#include <cctype>
 #include <cstring>
 
 #include <triton/aarch64Cpu.hpp>
@@ -338,7 +339,7 @@ namespace triton {
 
           /* Update instruction address if undefined */
           if (!inst.getAddress()) {
-            inst.setAddress(this->getConcreteRegisterValue(this->getProgramCounter()).convert_to<triton::uint64>());
+            inst.setAddress(static_cast<triton::uint64>(this->getConcreteRegisterValue(this->getProgramCounter())));
           }
 
           /* Let's disass and build our operands */
@@ -370,6 +371,9 @@ namespace triton {
 
             /* Set True if the instruction udpate flags */
             inst.setUpdateFlag(detail->arm64.update_flags);
+
+            /* Set architecture */
+            inst.setArchitecture(triton::arch::ARCH_AARCH64);
 
             /* Init operands */
             for (triton::uint32 n = 0; n < detail->arm64.op_count; n++) {
@@ -459,6 +463,7 @@ namespace triton {
                   }
 
                   /* Define a base address for next operand */
+                  size = this->getMemoryOperandSpecialSize(inst.getType());
                   if (!size) {
                     size = reg.getSize();
                   }
@@ -532,7 +537,7 @@ namespace triton {
           std::vector<triton::uint8> area;
 
           for (triton::usize index = 0; index < size; index++)
-            area.push_back(this->getConcreteMemoryValue(baseAddr+index));
+            area.push_back(this->getConcreteMemoryValue(baseAddr+index, execCallbacks));
 
           return area;
         }
@@ -617,162 +622,162 @@ namespace triton {
             case triton::arch::ID_REG_AARCH64_Z:    return (((*((triton::uint32*)(this->spsr))) >> 30) & 1);
             case triton::arch::ID_REG_AARCH64_C:    return (((*((triton::uint32*)(this->spsr))) >> 29) & 1);
             case triton::arch::ID_REG_AARCH64_V:    return (((*((triton::uint32*)(this->spsr))) >> 28) & 1);
-            case triton::arch::ID_REG_AARCH64_Q0:   value = triton::utils::fromBufferToUint<triton::uint128>(this->q0);  return value;
+            case triton::arch::ID_REG_AARCH64_Q0:   return triton::utils::cast<triton::uint128>(this->q0);
             case triton::arch::ID_REG_AARCH64_D0:   return (*((triton::uint64*)(this->q0)));
             case triton::arch::ID_REG_AARCH64_S0:   return (*((triton::uint32*)(this->q0)));
             case triton::arch::ID_REG_AARCH64_H0:   return (*((triton::uint16*)(this->q0)));
             case triton::arch::ID_REG_AARCH64_B0:   return (*((triton::uint8*)(this->q0)));
-            case triton::arch::ID_REG_AARCH64_Q1:   value = triton::utils::fromBufferToUint<triton::uint128>(this->q1);  return value;
+            case triton::arch::ID_REG_AARCH64_Q1:   return triton::utils::cast<triton::uint128>(this->q1);
             case triton::arch::ID_REG_AARCH64_D1:   return (*((triton::uint64*)(this->q1)));
             case triton::arch::ID_REG_AARCH64_S1:   return (*((triton::uint32*)(this->q1)));
             case triton::arch::ID_REG_AARCH64_H1:   return (*((triton::uint16*)(this->q1)));
             case triton::arch::ID_REG_AARCH64_B1:   return (*((triton::uint8*)(this->q1)));
-            case triton::arch::ID_REG_AARCH64_Q2:   value = triton::utils::fromBufferToUint<triton::uint128>(this->q2);  return value;
+            case triton::arch::ID_REG_AARCH64_Q2:   return triton::utils::cast<triton::uint128>(this->q2);
             case triton::arch::ID_REG_AARCH64_D2:   return (*((triton::uint64*)(this->q2)));
             case triton::arch::ID_REG_AARCH64_S2:   return (*((triton::uint32*)(this->q2)));
             case triton::arch::ID_REG_AARCH64_H2:   return (*((triton::uint16*)(this->q2)));
             case triton::arch::ID_REG_AARCH64_B2:   return (*((triton::uint8*)(this->q2)));
-            case triton::arch::ID_REG_AARCH64_Q3:   value = triton::utils::fromBufferToUint<triton::uint128>(this->q3);  return value;
+            case triton::arch::ID_REG_AARCH64_Q3:   return triton::utils::cast<triton::uint128>(this->q3);
             case triton::arch::ID_REG_AARCH64_D3:   return (*((triton::uint64*)(this->q3)));
             case triton::arch::ID_REG_AARCH64_S3:   return (*((triton::uint32*)(this->q3)));
             case triton::arch::ID_REG_AARCH64_H3:   return (*((triton::uint16*)(this->q3)));
             case triton::arch::ID_REG_AARCH64_B3:   return (*((triton::uint8*)(this->q3)));
-            case triton::arch::ID_REG_AARCH64_Q4:   value = triton::utils::fromBufferToUint<triton::uint128>(this->q4);  return value;
+            case triton::arch::ID_REG_AARCH64_Q4:   return triton::utils::cast<triton::uint128>(this->q4);
             case triton::arch::ID_REG_AARCH64_D4:   return (*((triton::uint64*)(this->q4)));
             case triton::arch::ID_REG_AARCH64_S4:   return (*((triton::uint32*)(this->q4)));
             case triton::arch::ID_REG_AARCH64_H4:   return (*((triton::uint16*)(this->q4)));
             case triton::arch::ID_REG_AARCH64_B4:   return (*((triton::uint8*)(this->q4)));
-            case triton::arch::ID_REG_AARCH64_Q5:   value = triton::utils::fromBufferToUint<triton::uint128>(this->q5);  return value;
+            case triton::arch::ID_REG_AARCH64_Q5:   return triton::utils::cast<triton::uint128>(this->q5);
             case triton::arch::ID_REG_AARCH64_D5:   return (*((triton::uint64*)(this->q5)));
             case triton::arch::ID_REG_AARCH64_S5:   return (*((triton::uint32*)(this->q5)));
             case triton::arch::ID_REG_AARCH64_H5:   return (*((triton::uint16*)(this->q5)));
             case triton::arch::ID_REG_AARCH64_B5:   return (*((triton::uint8*)(this->q5)));
-            case triton::arch::ID_REG_AARCH64_Q6:   value = triton::utils::fromBufferToUint<triton::uint128>(this->q6);  return value;
+            case triton::arch::ID_REG_AARCH64_Q6:   return triton::utils::cast<triton::uint128>(this->q6);
             case triton::arch::ID_REG_AARCH64_D6:   return (*((triton::uint64*)(this->q6)));
             case triton::arch::ID_REG_AARCH64_S6:   return (*((triton::uint32*)(this->q6)));
             case triton::arch::ID_REG_AARCH64_H6:   return (*((triton::uint16*)(this->q6)));
             case triton::arch::ID_REG_AARCH64_B6:   return (*((triton::uint8*)(this->q6)));
-            case triton::arch::ID_REG_AARCH64_Q7:   value = triton::utils::fromBufferToUint<triton::uint128>(this->q7);  return value;
+            case triton::arch::ID_REG_AARCH64_Q7:   return triton::utils::cast<triton::uint128>(this->q7);
             case triton::arch::ID_REG_AARCH64_D7:   return (*((triton::uint64*)(this->q7)));
             case triton::arch::ID_REG_AARCH64_S7:   return (*((triton::uint32*)(this->q7)));
             case triton::arch::ID_REG_AARCH64_H7:   return (*((triton::uint16*)(this->q7)));
             case triton::arch::ID_REG_AARCH64_B7:   return (*((triton::uint8*)(this->q7)));
-            case triton::arch::ID_REG_AARCH64_Q8:   value = triton::utils::fromBufferToUint<triton::uint128>(this->q8);  return value;
+            case triton::arch::ID_REG_AARCH64_Q8:   return triton::utils::cast<triton::uint128>(this->q8);
             case triton::arch::ID_REG_AARCH64_D8:   return (*((triton::uint64*)(this->q8)));
             case triton::arch::ID_REG_AARCH64_S8:   return (*((triton::uint32*)(this->q8)));
             case triton::arch::ID_REG_AARCH64_H8:   return (*((triton::uint16*)(this->q8)));
             case triton::arch::ID_REG_AARCH64_B8:   return (*((triton::uint8*)(this->q8)));
-            case triton::arch::ID_REG_AARCH64_Q9:   value = triton::utils::fromBufferToUint<triton::uint128>(this->q9);  return value;
+            case triton::arch::ID_REG_AARCH64_Q9:   return triton::utils::cast<triton::uint128>(this->q9);
             case triton::arch::ID_REG_AARCH64_D9:   return (*((triton::uint64*)(this->q9)));
             case triton::arch::ID_REG_AARCH64_S9:   return (*((triton::uint32*)(this->q9)));
             case triton::arch::ID_REG_AARCH64_H9:   return (*((triton::uint16*)(this->q9)));
             case triton::arch::ID_REG_AARCH64_B9:   return (*((triton::uint8*)(this->q9)));
-            case triton::arch::ID_REG_AARCH64_Q10:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q10);  return value;
+            case triton::arch::ID_REG_AARCH64_Q10:  return triton::utils::cast<triton::uint128>(this->q10);
             case triton::arch::ID_REG_AARCH64_D10:  return (*((triton::uint64*)(this->q10)));
             case triton::arch::ID_REG_AARCH64_S10:  return (*((triton::uint32*)(this->q10)));
             case triton::arch::ID_REG_AARCH64_H10:  return (*((triton::uint16*)(this->q10)));
             case triton::arch::ID_REG_AARCH64_B10:  return (*((triton::uint8*)(this->q10)));
-            case triton::arch::ID_REG_AARCH64_Q11:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q11);  return value;
+            case triton::arch::ID_REG_AARCH64_Q11:  return triton::utils::cast<triton::uint128>(this->q11);
             case triton::arch::ID_REG_AARCH64_D11:  return (*((triton::uint64*)(this->q11)));
             case triton::arch::ID_REG_AARCH64_S11:  return (*((triton::uint32*)(this->q11)));
             case triton::arch::ID_REG_AARCH64_H11:  return (*((triton::uint16*)(this->q11)));
             case triton::arch::ID_REG_AARCH64_B11:  return (*((triton::uint8*)(this->q11)));
-            case triton::arch::ID_REG_AARCH64_Q12:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q12);  return value;
+            case triton::arch::ID_REG_AARCH64_Q12:  return triton::utils::cast<triton::uint128>(this->q12);
             case triton::arch::ID_REG_AARCH64_D12:  return (*((triton::uint64*)(this->q12)));
             case triton::arch::ID_REG_AARCH64_S12:  return (*((triton::uint32*)(this->q12)));
             case triton::arch::ID_REG_AARCH64_H12:  return (*((triton::uint16*)(this->q12)));
             case triton::arch::ID_REG_AARCH64_B12:  return (*((triton::uint8*)(this->q12)));
-            case triton::arch::ID_REG_AARCH64_Q13:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q13);  return value;
+            case triton::arch::ID_REG_AARCH64_Q13:  return triton::utils::cast<triton::uint128>(this->q13);
             case triton::arch::ID_REG_AARCH64_D13:  return (*((triton::uint64*)(this->q13)));
             case triton::arch::ID_REG_AARCH64_S13:  return (*((triton::uint32*)(this->q13)));
             case triton::arch::ID_REG_AARCH64_H13:  return (*((triton::uint16*)(this->q13)));
             case triton::arch::ID_REG_AARCH64_B13:  return (*((triton::uint8*)(this->q13)));
-            case triton::arch::ID_REG_AARCH64_Q14:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q14);  return value;
+            case triton::arch::ID_REG_AARCH64_Q14:  return triton::utils::cast<triton::uint128>(this->q14);
             case triton::arch::ID_REG_AARCH64_D14:  return (*((triton::uint64*)(this->q14)));
             case triton::arch::ID_REG_AARCH64_S14:  return (*((triton::uint32*)(this->q14)));
             case triton::arch::ID_REG_AARCH64_H14:  return (*((triton::uint16*)(this->q14)));
             case triton::arch::ID_REG_AARCH64_B14:  return (*((triton::uint8*)(this->q14)));
-            case triton::arch::ID_REG_AARCH64_Q15:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q15);  return value;
+            case triton::arch::ID_REG_AARCH64_Q15:  return triton::utils::cast<triton::uint128>(this->q15);
             case triton::arch::ID_REG_AARCH64_D15:  return (*((triton::uint64*)(this->q15)));
             case triton::arch::ID_REG_AARCH64_S15:  return (*((triton::uint32*)(this->q15)));
             case triton::arch::ID_REG_AARCH64_H15:  return (*((triton::uint16*)(this->q15)));
             case triton::arch::ID_REG_AARCH64_B15:  return (*((triton::uint8*)(this->q15)));
-            case triton::arch::ID_REG_AARCH64_Q16:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q16);  return value;
+            case triton::arch::ID_REG_AARCH64_Q16:  return triton::utils::cast<triton::uint128>(this->q16);
             case triton::arch::ID_REG_AARCH64_D16:  return (*((triton::uint64*)(this->q16)));
             case triton::arch::ID_REG_AARCH64_S16:  return (*((triton::uint32*)(this->q16)));
             case triton::arch::ID_REG_AARCH64_H16:  return (*((triton::uint16*)(this->q16)));
             case triton::arch::ID_REG_AARCH64_B16:  return (*((triton::uint8*)(this->q16)));
-            case triton::arch::ID_REG_AARCH64_Q17:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q17);  return value;
+            case triton::arch::ID_REG_AARCH64_Q17:  return triton::utils::cast<triton::uint128>(this->q17);
             case triton::arch::ID_REG_AARCH64_D17:  return (*((triton::uint64*)(this->q17)));
             case triton::arch::ID_REG_AARCH64_S17:  return (*((triton::uint32*)(this->q17)));
             case triton::arch::ID_REG_AARCH64_H17:  return (*((triton::uint16*)(this->q17)));
             case triton::arch::ID_REG_AARCH64_B17:  return (*((triton::uint8*)(this->q17)));
-            case triton::arch::ID_REG_AARCH64_Q18:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q18);  return value;
+            case triton::arch::ID_REG_AARCH64_Q18:  return triton::utils::cast<triton::uint128>(this->q18);
             case triton::arch::ID_REG_AARCH64_D18:  return (*((triton::uint64*)(this->q18)));
             case triton::arch::ID_REG_AARCH64_S18:  return (*((triton::uint32*)(this->q18)));
             case triton::arch::ID_REG_AARCH64_H18:  return (*((triton::uint16*)(this->q18)));
             case triton::arch::ID_REG_AARCH64_B18:  return (*((triton::uint8*)(this->q18)));
-            case triton::arch::ID_REG_AARCH64_Q19:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q19);  return value;
+            case triton::arch::ID_REG_AARCH64_Q19:  return triton::utils::cast<triton::uint128>(this->q19);
             case triton::arch::ID_REG_AARCH64_D19:  return (*((triton::uint64*)(this->q19)));
             case triton::arch::ID_REG_AARCH64_S19:  return (*((triton::uint32*)(this->q19)));
             case triton::arch::ID_REG_AARCH64_H19:  return (*((triton::uint16*)(this->q19)));
             case triton::arch::ID_REG_AARCH64_B19:  return (*((triton::uint8*)(this->q19)));
-            case triton::arch::ID_REG_AARCH64_Q20:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q20);  return value;
+            case triton::arch::ID_REG_AARCH64_Q20:  return triton::utils::cast<triton::uint128>(this->q20);
             case triton::arch::ID_REG_AARCH64_D20:  return (*((triton::uint64*)(this->q20)));
             case triton::arch::ID_REG_AARCH64_S20:  return (*((triton::uint32*)(this->q20)));
             case triton::arch::ID_REG_AARCH64_H20:  return (*((triton::uint16*)(this->q20)));
             case triton::arch::ID_REG_AARCH64_B20:  return (*((triton::uint8*)(this->q20)));
-            case triton::arch::ID_REG_AARCH64_Q21:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q21);  return value;
+            case triton::arch::ID_REG_AARCH64_Q21:  return triton::utils::cast<triton::uint128>(this->q21);
             case triton::arch::ID_REG_AARCH64_D21:  return (*((triton::uint64*)(this->q21)));
             case triton::arch::ID_REG_AARCH64_S21:  return (*((triton::uint32*)(this->q21)));
             case triton::arch::ID_REG_AARCH64_H21:  return (*((triton::uint16*)(this->q21)));
             case triton::arch::ID_REG_AARCH64_B21:  return (*((triton::uint8*)(this->q21)));
-            case triton::arch::ID_REG_AARCH64_Q22:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q22);  return value;
+            case triton::arch::ID_REG_AARCH64_Q22:  return triton::utils::cast<triton::uint128>(this->q22);
             case triton::arch::ID_REG_AARCH64_D22:  return (*((triton::uint64*)(this->q22)));
             case triton::arch::ID_REG_AARCH64_S22:  return (*((triton::uint32*)(this->q22)));
             case triton::arch::ID_REG_AARCH64_H22:  return (*((triton::uint16*)(this->q22)));
             case triton::arch::ID_REG_AARCH64_B22:  return (*((triton::uint8*)(this->q22)));
-            case triton::arch::ID_REG_AARCH64_Q23:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q23);  return value;
+            case triton::arch::ID_REG_AARCH64_Q23:  return triton::utils::cast<triton::uint128>(this->q23);
             case triton::arch::ID_REG_AARCH64_D23:  return (*((triton::uint64*)(this->q23)));
             case triton::arch::ID_REG_AARCH64_S23:  return (*((triton::uint32*)(this->q23)));
             case triton::arch::ID_REG_AARCH64_H23:  return (*((triton::uint16*)(this->q23)));
             case triton::arch::ID_REG_AARCH64_B23:  return (*((triton::uint8*)(this->q23)));
-            case triton::arch::ID_REG_AARCH64_Q24:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q24);  return value;
+            case triton::arch::ID_REG_AARCH64_Q24:  return triton::utils::cast<triton::uint128>(this->q24);
             case triton::arch::ID_REG_AARCH64_D24:  return (*((triton::uint64*)(this->q24)));
             case triton::arch::ID_REG_AARCH64_S24:  return (*((triton::uint32*)(this->q24)));
             case triton::arch::ID_REG_AARCH64_H24:  return (*((triton::uint16*)(this->q24)));
             case triton::arch::ID_REG_AARCH64_B24:  return (*((triton::uint8*)(this->q24)));
-            case triton::arch::ID_REG_AARCH64_Q25:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q25);  return value;
+            case triton::arch::ID_REG_AARCH64_Q25:  return triton::utils::cast<triton::uint128>(this->q25);
             case triton::arch::ID_REG_AARCH64_D25:  return (*((triton::uint64*)(this->q25)));
             case triton::arch::ID_REG_AARCH64_S25:  return (*((triton::uint32*)(this->q25)));
             case triton::arch::ID_REG_AARCH64_H25:  return (*((triton::uint16*)(this->q25)));
             case triton::arch::ID_REG_AARCH64_B25:  return (*((triton::uint8*)(this->q25)));
-            case triton::arch::ID_REG_AARCH64_Q26:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q26);  return value;
+            case triton::arch::ID_REG_AARCH64_Q26:  return triton::utils::cast<triton::uint128>(this->q26);
             case triton::arch::ID_REG_AARCH64_D26:  return (*((triton::uint64*)(this->q26)));
             case triton::arch::ID_REG_AARCH64_S26:  return (*((triton::uint32*)(this->q26)));
             case triton::arch::ID_REG_AARCH64_H26:  return (*((triton::uint16*)(this->q26)));
             case triton::arch::ID_REG_AARCH64_B26:  return (*((triton::uint8*)(this->q26)));
-            case triton::arch::ID_REG_AARCH64_Q27:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q27);  return value;
+            case triton::arch::ID_REG_AARCH64_Q27:  return triton::utils::cast<triton::uint128>(this->q27);
             case triton::arch::ID_REG_AARCH64_D27:  return (*((triton::uint64*)(this->q27)));
             case triton::arch::ID_REG_AARCH64_S27:  return (*((triton::uint32*)(this->q27)));
             case triton::arch::ID_REG_AARCH64_H27:  return (*((triton::uint16*)(this->q27)));
             case triton::arch::ID_REG_AARCH64_B27:  return (*((triton::uint8*)(this->q27)));
-            case triton::arch::ID_REG_AARCH64_Q28:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q28);  return value;
+            case triton::arch::ID_REG_AARCH64_Q28:  return triton::utils::cast<triton::uint128>(this->q28);
             case triton::arch::ID_REG_AARCH64_D28:  return (*((triton::uint64*)(this->q28)));
             case triton::arch::ID_REG_AARCH64_S28:  return (*((triton::uint32*)(this->q28)));
             case triton::arch::ID_REG_AARCH64_H28:  return (*((triton::uint16*)(this->q28)));
             case triton::arch::ID_REG_AARCH64_B28:  return (*((triton::uint8*)(this->q28)));
-            case triton::arch::ID_REG_AARCH64_Q29:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q29);  return value;
+            case triton::arch::ID_REG_AARCH64_Q29:  return triton::utils::cast<triton::uint128>(this->q29);
             case triton::arch::ID_REG_AARCH64_D29:  return (*((triton::uint64*)(this->q29)));
             case triton::arch::ID_REG_AARCH64_S29:  return (*((triton::uint32*)(this->q29)));
             case triton::arch::ID_REG_AARCH64_H29:  return (*((triton::uint16*)(this->q29)));
             case triton::arch::ID_REG_AARCH64_B29:  return (*((triton::uint8*)(this->q29)));
-            case triton::arch::ID_REG_AARCH64_Q30:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q30);  return value;
+            case triton::arch::ID_REG_AARCH64_Q30:  return triton::utils::cast<triton::uint128>(this->q30);
             case triton::arch::ID_REG_AARCH64_D30:  return (*((triton::uint64*)(this->q30)));
             case triton::arch::ID_REG_AARCH64_S30:  return (*((triton::uint32*)(this->q30)));
             case triton::arch::ID_REG_AARCH64_H30:  return (*((triton::uint16*)(this->q30)));
             case triton::arch::ID_REG_AARCH64_B30:  return (*((triton::uint8*)(this->q30)));
-            case triton::arch::ID_REG_AARCH64_Q31:  value = triton::utils::fromBufferToUint<triton::uint128>(this->q31);  return value;
+            case triton::arch::ID_REG_AARCH64_Q31:  return triton::utils::cast<triton::uint128>(this->q31);
             case triton::arch::ID_REG_AARCH64_D31:  return (*((triton::uint64*)(this->q31)));
             case triton::arch::ID_REG_AARCH64_S31:  return (*((triton::uint32*)(this->q31)));
             case triton::arch::ID_REG_AARCH64_H31:  return (*((triton::uint16*)(this->q31)));
@@ -785,14 +790,14 @@ namespace triton {
         }
 
 
-        void AArch64Cpu::setConcreteMemoryValue(triton::uint64 addr, triton::uint8 value) {
-          if (this->callbacks)
+        void AArch64Cpu::setConcreteMemoryValue(triton::uint64 addr, triton::uint8 value, bool execCallbacks) {
+          if (execCallbacks && this->callbacks)
             this->callbacks->processCallbacks(triton::callbacks::SET_CONCRETE_MEMORY_VALUE, MemoryAccess(addr, triton::size::byte), value);
           this->memory[addr] = value;
         }
 
 
-        void AArch64Cpu::setConcreteMemoryValue(const triton::arch::MemoryAccess& mem, const triton::uint512& value) {
+        void AArch64Cpu::setConcreteMemoryValue(const triton::arch::MemoryAccess& mem, const triton::uint512& value, bool execCallbacks) {
           triton::uint64 addr = mem.getAddress();
           triton::uint32 size = mem.getSize();
           triton::uint512 cv  = value;
@@ -803,106 +808,106 @@ namespace triton {
           if (size == 0 || size > triton::size::dqqword)
             throw triton::exceptions::Cpu("AArch64Cpu::setConcreteMemoryValue(): Invalid size memory.");
 
-          if (this->callbacks)
+          if (execCallbacks && this->callbacks)
             this->callbacks->processCallbacks(triton::callbacks::SET_CONCRETE_MEMORY_VALUE, mem, value);
 
           for (triton::uint32 i = 0; i < size; i++) {
-            this->memory[addr+i] = (cv & 0xff).convert_to<triton::uint8>();
+            this->memory[addr+i] = static_cast<triton::uint8>((cv & 0xff));
             cv >>= 8;
           }
         }
 
 
-        void AArch64Cpu::setConcreteMemoryAreaValue(triton::uint64 baseAddr, const std::vector<triton::uint8>& values) {
+        void AArch64Cpu::setConcreteMemoryAreaValue(triton::uint64 baseAddr, const std::vector<triton::uint8>& values, bool execCallbacks) {
           this->memory.reserve(values.size() + this->memory.size());
           for (triton::usize index = 0; index < values.size(); index++) {
-            this->setConcreteMemoryValue(baseAddr+index, values[index]);
+            this->setConcreteMemoryValue(baseAddr+index, values[index], execCallbacks);
           }
         }
 
 
-        void AArch64Cpu::setConcreteMemoryAreaValue(triton::uint64 baseAddr, const triton::uint8* area, triton::usize size) {
+        void AArch64Cpu::setConcreteMemoryAreaValue(triton::uint64 baseAddr, const void* area, triton::usize size, bool execCallbacks) {
           this->memory.reserve(size + this->memory.size());
           for (triton::usize index = 0; index < size; index++) {
-            this->setConcreteMemoryValue(baseAddr+index, area[index]);
+            this->setConcreteMemoryValue(baseAddr+index, reinterpret_cast<const triton::uint8*>(area)[index], execCallbacks);
           }
         }
 
 
-        void AArch64Cpu::setConcreteRegisterValue(const triton::arch::Register& reg, const triton::uint512& value) {
+        void AArch64Cpu::setConcreteRegisterValue(const triton::arch::Register& reg, const triton::uint512& value, bool execCallbacks) {
           if (value > reg.getMaxValue())
             throw triton::exceptions::Register("AArch64Cpu::setConcreteRegisterValue(): You cannot set this concrete value (too big) to this register.");
 
-          if (this->callbacks)
+          if (execCallbacks && this->callbacks)
             this->callbacks->processCallbacks(triton::callbacks::SET_CONCRETE_REGISTER_VALUE, reg, value);
 
           switch (reg.getId()) {
-            case triton::arch::ID_REG_AARCH64_X0:   (*((triton::uint64*)(this->x0)))   = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W0:   (*((triton::uint32*)(this->x0)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X1:   (*((triton::uint64*)(this->x1)))   = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W1:   (*((triton::uint32*)(this->x1)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X2:   (*((triton::uint64*)(this->x2)))   = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W2:   (*((triton::uint32*)(this->x2)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X3:   (*((triton::uint64*)(this->x3)))   = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W3:   (*((triton::uint32*)(this->x3)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X4:   (*((triton::uint64*)(this->x4)))   = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W4:   (*((triton::uint32*)(this->x4)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X5:   (*((triton::uint64*)(this->x5)))   = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W5:   (*((triton::uint32*)(this->x5)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X6:   (*((triton::uint64*)(this->x6)))   = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W6:   (*((triton::uint32*)(this->x6)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X7:   (*((triton::uint64*)(this->x7)))   = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W7:   (*((triton::uint32*)(this->x7)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X8:   (*((triton::uint64*)(this->x8)))   = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W8:   (*((triton::uint32*)(this->x8)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X9:   (*((triton::uint64*)(this->x9)))   = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W9:   (*((triton::uint32*)(this->x9)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X10:  (*((triton::uint64*)(this->x10)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W10:  (*((triton::uint32*)(this->x10)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X11:  (*((triton::uint64*)(this->x11)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W11:  (*((triton::uint32*)(this->x11)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X12:  (*((triton::uint64*)(this->x12)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W12:  (*((triton::uint32*)(this->x12)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X13:  (*((triton::uint64*)(this->x13)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W13:  (*((triton::uint32*)(this->x13)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X14:  (*((triton::uint64*)(this->x14)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W14:  (*((triton::uint32*)(this->x14)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X15:  (*((triton::uint64*)(this->x15)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W15:  (*((triton::uint32*)(this->x15)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X16:  (*((triton::uint64*)(this->x16)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W16:  (*((triton::uint32*)(this->x16)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X17:  (*((triton::uint64*)(this->x17)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W17:  (*((triton::uint32*)(this->x17)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X18:  (*((triton::uint64*)(this->x18)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W18:  (*((triton::uint32*)(this->x18)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X19:  (*((triton::uint64*)(this->x19)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W19:  (*((triton::uint32*)(this->x19)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X20:  (*((triton::uint64*)(this->x20)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W20:  (*((triton::uint32*)(this->x20)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X21:  (*((triton::uint64*)(this->x21)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W21:  (*((triton::uint32*)(this->x21)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X22:  (*((triton::uint64*)(this->x22)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W22:  (*((triton::uint32*)(this->x22)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X23:  (*((triton::uint64*)(this->x23)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W23:  (*((triton::uint32*)(this->x23)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X24:  (*((triton::uint64*)(this->x24)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W24:  (*((triton::uint32*)(this->x24)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X25:  (*((triton::uint64*)(this->x25)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W25:  (*((triton::uint32*)(this->x25)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X26:  (*((triton::uint64*)(this->x26)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W26:  (*((triton::uint32*)(this->x26)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X27:  (*((triton::uint64*)(this->x27)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W27:  (*((triton::uint32*)(this->x27)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X28:  (*((triton::uint64*)(this->x28)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W28:  (*((triton::uint32*)(this->x28)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X29:  (*((triton::uint64*)(this->x29)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W29:  (*((triton::uint32*)(this->x29)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_X30:  (*((triton::uint64*)(this->x30)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_W30:  (*((triton::uint32*)(this->x30)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_SP:   (*((triton::uint64*)(this->sp)))   = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_WSP:  (*((triton::uint32*)(this->sp)))   = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_PC:   (*((triton::uint64*)(this->pc)))   = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_SPSR: (*((triton::uint32*)(this->spsr))) = value.convert_to<triton::uint32>(); break;
+            case triton::arch::ID_REG_AARCH64_X0:   (*((triton::uint64*)(this->x0)))   = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W0:   (*((triton::uint32*)(this->x0)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X1:   (*((triton::uint64*)(this->x1)))   = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W1:   (*((triton::uint32*)(this->x1)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X2:   (*((triton::uint64*)(this->x2)))   = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W2:   (*((triton::uint32*)(this->x2)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X3:   (*((triton::uint64*)(this->x3)))   = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W3:   (*((triton::uint32*)(this->x3)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X4:   (*((triton::uint64*)(this->x4)))   = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W4:   (*((triton::uint32*)(this->x4)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X5:   (*((triton::uint64*)(this->x5)))   = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W5:   (*((triton::uint32*)(this->x5)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X6:   (*((triton::uint64*)(this->x6)))   = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W6:   (*((triton::uint32*)(this->x6)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X7:   (*((triton::uint64*)(this->x7)))   = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W7:   (*((triton::uint32*)(this->x7)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X8:   (*((triton::uint64*)(this->x8)))   = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W8:   (*((triton::uint32*)(this->x8)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X9:   (*((triton::uint64*)(this->x9)))   = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W9:   (*((triton::uint32*)(this->x9)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X10:  (*((triton::uint64*)(this->x10)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W10:  (*((triton::uint32*)(this->x10)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X11:  (*((triton::uint64*)(this->x11)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W11:  (*((triton::uint32*)(this->x11)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X12:  (*((triton::uint64*)(this->x12)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W12:  (*((triton::uint32*)(this->x12)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X13:  (*((triton::uint64*)(this->x13)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W13:  (*((triton::uint32*)(this->x13)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X14:  (*((triton::uint64*)(this->x14)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W14:  (*((triton::uint32*)(this->x14)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X15:  (*((triton::uint64*)(this->x15)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W15:  (*((triton::uint32*)(this->x15)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X16:  (*((triton::uint64*)(this->x16)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W16:  (*((triton::uint32*)(this->x16)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X17:  (*((triton::uint64*)(this->x17)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W17:  (*((triton::uint32*)(this->x17)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X18:  (*((triton::uint64*)(this->x18)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W18:  (*((triton::uint32*)(this->x18)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X19:  (*((triton::uint64*)(this->x19)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W19:  (*((triton::uint32*)(this->x19)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X20:  (*((triton::uint64*)(this->x20)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W20:  (*((triton::uint32*)(this->x20)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X21:  (*((triton::uint64*)(this->x21)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W21:  (*((triton::uint32*)(this->x21)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X22:  (*((triton::uint64*)(this->x22)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W22:  (*((triton::uint32*)(this->x22)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X23:  (*((triton::uint64*)(this->x23)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W23:  (*((triton::uint32*)(this->x23)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X24:  (*((triton::uint64*)(this->x24)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W24:  (*((triton::uint32*)(this->x24)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X25:  (*((triton::uint64*)(this->x25)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W25:  (*((triton::uint32*)(this->x25)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X26:  (*((triton::uint64*)(this->x26)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W26:  (*((triton::uint32*)(this->x26)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X27:  (*((triton::uint64*)(this->x27)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W27:  (*((triton::uint32*)(this->x27)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X28:  (*((triton::uint64*)(this->x28)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W28:  (*((triton::uint32*)(this->x28)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X29:  (*((triton::uint64*)(this->x29)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W29:  (*((triton::uint32*)(this->x29)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_X30:  (*((triton::uint64*)(this->x30)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_W30:  (*((triton::uint32*)(this->x30)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_SP:   (*((triton::uint64*)(this->sp)))   = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_WSP:  (*((triton::uint32*)(this->sp)))   = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_PC:   (*((triton::uint64*)(this->pc)))   = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_SPSR: (*((triton::uint32*)(this->spsr))) = static_cast<triton::uint32>(value); break;
 
             case triton::arch::ID_REG_AARCH64_XZR:  break;  // Just do nothing
             case triton::arch::ID_REG_AARCH64_WZR:  break;  // Just do nothing
@@ -927,170 +932,170 @@ namespace triton {
               (*((triton::uint32*)(this->spsr))) = !value.is_zero() ? b | (1 << 28) : b & ~(1 << 28);
               break;
             }
-            case triton::arch::ID_REG_AARCH64_Q0:  triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q0);  break;
-            case triton::arch::ID_REG_AARCH64_Q1:  triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q1);  break;
-            case triton::arch::ID_REG_AARCH64_Q2:  triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q2);  break;
-            case triton::arch::ID_REG_AARCH64_Q3:  triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q3);  break;
-            case triton::arch::ID_REG_AARCH64_Q4:  triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q4);  break;
-            case triton::arch::ID_REG_AARCH64_Q5:  triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q5);  break;
-            case triton::arch::ID_REG_AARCH64_Q6:  triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q6);  break;
-            case triton::arch::ID_REG_AARCH64_Q7:  triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q7);  break;
-            case triton::arch::ID_REG_AARCH64_Q8:  triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q8);  break;
-            case triton::arch::ID_REG_AARCH64_Q9:  triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q9);  break;
-            case triton::arch::ID_REG_AARCH64_Q10: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q10); break;
-            case triton::arch::ID_REG_AARCH64_Q11: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q11); break;
-            case triton::arch::ID_REG_AARCH64_Q12: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q12); break;
-            case triton::arch::ID_REG_AARCH64_Q13: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q13); break;
-            case triton::arch::ID_REG_AARCH64_Q14: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q14); break;
-            case triton::arch::ID_REG_AARCH64_Q15: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q15); break;
-            case triton::arch::ID_REG_AARCH64_Q16: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q16); break;
-            case triton::arch::ID_REG_AARCH64_Q17: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q17); break;
-            case triton::arch::ID_REG_AARCH64_Q18: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q18); break;
-            case triton::arch::ID_REG_AARCH64_Q19: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q19); break;
-            case triton::arch::ID_REG_AARCH64_Q20: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q20); break;
-            case triton::arch::ID_REG_AARCH64_Q21: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q21); break;
-            case triton::arch::ID_REG_AARCH64_Q22: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q22); break;
-            case triton::arch::ID_REG_AARCH64_Q23: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q23); break;
-            case triton::arch::ID_REG_AARCH64_Q24: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q24); break;
-            case triton::arch::ID_REG_AARCH64_Q25: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q25); break;
-            case triton::arch::ID_REG_AARCH64_Q26: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q26); break;
-            case triton::arch::ID_REG_AARCH64_Q27: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q27); break;
-            case triton::arch::ID_REG_AARCH64_Q28: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q28); break;
-            case triton::arch::ID_REG_AARCH64_Q29: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q29); break;
-            case triton::arch::ID_REG_AARCH64_Q30: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q30); break;
-            case triton::arch::ID_REG_AARCH64_Q31: triton::utils::fromUintToBuffer(value.convert_to<triton::uint128>(), this->q31); break;
+            case triton::arch::ID_REG_AARCH64_Q0:  triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q0);  break;
+            case triton::arch::ID_REG_AARCH64_Q1:  triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q1);  break;
+            case triton::arch::ID_REG_AARCH64_Q2:  triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q2);  break;
+            case triton::arch::ID_REG_AARCH64_Q3:  triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q3);  break;
+            case triton::arch::ID_REG_AARCH64_Q4:  triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q4);  break;
+            case triton::arch::ID_REG_AARCH64_Q5:  triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q5);  break;
+            case triton::arch::ID_REG_AARCH64_Q6:  triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q6);  break;
+            case triton::arch::ID_REG_AARCH64_Q7:  triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q7);  break;
+            case triton::arch::ID_REG_AARCH64_Q8:  triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q8);  break;
+            case triton::arch::ID_REG_AARCH64_Q9:  triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q9);  break;
+            case triton::arch::ID_REG_AARCH64_Q10: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q10); break;
+            case triton::arch::ID_REG_AARCH64_Q11: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q11); break;
+            case triton::arch::ID_REG_AARCH64_Q12: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q12); break;
+            case triton::arch::ID_REG_AARCH64_Q13: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q13); break;
+            case triton::arch::ID_REG_AARCH64_Q14: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q14); break;
+            case triton::arch::ID_REG_AARCH64_Q15: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q15); break;
+            case triton::arch::ID_REG_AARCH64_Q16: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q16); break;
+            case triton::arch::ID_REG_AARCH64_Q17: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q17); break;
+            case triton::arch::ID_REG_AARCH64_Q18: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q18); break;
+            case triton::arch::ID_REG_AARCH64_Q19: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q19); break;
+            case triton::arch::ID_REG_AARCH64_Q20: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q20); break;
+            case triton::arch::ID_REG_AARCH64_Q21: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q21); break;
+            case triton::arch::ID_REG_AARCH64_Q22: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q22); break;
+            case triton::arch::ID_REG_AARCH64_Q23: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q23); break;
+            case triton::arch::ID_REG_AARCH64_Q24: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q24); break;
+            case triton::arch::ID_REG_AARCH64_Q25: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q25); break;
+            case triton::arch::ID_REG_AARCH64_Q26: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q26); break;
+            case triton::arch::ID_REG_AARCH64_Q27: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q27); break;
+            case triton::arch::ID_REG_AARCH64_Q28: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q28); break;
+            case triton::arch::ID_REG_AARCH64_Q29: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q29); break;
+            case triton::arch::ID_REG_AARCH64_Q30: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q30); break;
+            case triton::arch::ID_REG_AARCH64_Q31: triton::utils::fromUintToBuffer(static_cast<triton::uint128>(value), this->q31); break;
 
-            case triton::arch::ID_REG_AARCH64_D0:  (*((triton::uint64*)(this->q0)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D1:  (*((triton::uint64*)(this->q1)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D2:  (*((triton::uint64*)(this->q2)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D3:  (*((triton::uint64*)(this->q3)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D4:  (*((triton::uint64*)(this->q4)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D5:  (*((triton::uint64*)(this->q5)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D6:  (*((triton::uint64*)(this->q6)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D7:  (*((triton::uint64*)(this->q7)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D8:  (*((triton::uint64*)(this->q8)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D9:  (*((triton::uint64*)(this->q9)))  = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D10: (*((triton::uint64*)(this->q10))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D11: (*((triton::uint64*)(this->q11))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D12: (*((triton::uint64*)(this->q12))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D13: (*((triton::uint64*)(this->q13))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D14: (*((triton::uint64*)(this->q14))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D15: (*((triton::uint64*)(this->q15))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D16: (*((triton::uint64*)(this->q16))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D17: (*((triton::uint64*)(this->q17))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D18: (*((triton::uint64*)(this->q18))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D19: (*((triton::uint64*)(this->q19))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D20: (*((triton::uint64*)(this->q20))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D21: (*((triton::uint64*)(this->q21))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D22: (*((triton::uint64*)(this->q22))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D23: (*((triton::uint64*)(this->q23))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D24: (*((triton::uint64*)(this->q24))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D25: (*((triton::uint64*)(this->q25))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D26: (*((triton::uint64*)(this->q26))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D27: (*((triton::uint64*)(this->q27))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D28: (*((triton::uint64*)(this->q28))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D29: (*((triton::uint64*)(this->q29))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D30: (*((triton::uint64*)(this->q30))) = value.convert_to<triton::uint64>(); break;
-            case triton::arch::ID_REG_AARCH64_D31: (*((triton::uint64*)(this->q31))) = value.convert_to<triton::uint64>(); break;
+            case triton::arch::ID_REG_AARCH64_D0:  (*((triton::uint64*)(this->q0)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D1:  (*((triton::uint64*)(this->q1)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D2:  (*((triton::uint64*)(this->q2)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D3:  (*((triton::uint64*)(this->q3)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D4:  (*((triton::uint64*)(this->q4)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D5:  (*((triton::uint64*)(this->q5)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D6:  (*((triton::uint64*)(this->q6)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D7:  (*((triton::uint64*)(this->q7)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D8:  (*((triton::uint64*)(this->q8)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D9:  (*((triton::uint64*)(this->q9)))  = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D10: (*((triton::uint64*)(this->q10))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D11: (*((triton::uint64*)(this->q11))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D12: (*((triton::uint64*)(this->q12))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D13: (*((triton::uint64*)(this->q13))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D14: (*((triton::uint64*)(this->q14))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D15: (*((triton::uint64*)(this->q15))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D16: (*((triton::uint64*)(this->q16))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D17: (*((triton::uint64*)(this->q17))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D18: (*((triton::uint64*)(this->q18))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D19: (*((triton::uint64*)(this->q19))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D20: (*((triton::uint64*)(this->q20))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D21: (*((triton::uint64*)(this->q21))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D22: (*((triton::uint64*)(this->q22))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D23: (*((triton::uint64*)(this->q23))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D24: (*((triton::uint64*)(this->q24))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D25: (*((triton::uint64*)(this->q25))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D26: (*((triton::uint64*)(this->q26))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D27: (*((triton::uint64*)(this->q27))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D28: (*((triton::uint64*)(this->q28))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D29: (*((triton::uint64*)(this->q29))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D30: (*((triton::uint64*)(this->q30))) = static_cast<triton::uint64>(value); break;
+            case triton::arch::ID_REG_AARCH64_D31: (*((triton::uint64*)(this->q31))) = static_cast<triton::uint64>(value); break;
 
-            case triton::arch::ID_REG_AARCH64_S0:  (*((triton::uint32*)(this->q0)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S1:  (*((triton::uint32*)(this->q1)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S2:  (*((triton::uint32*)(this->q2)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S3:  (*((triton::uint32*)(this->q3)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S4:  (*((triton::uint32*)(this->q4)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S5:  (*((triton::uint32*)(this->q5)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S6:  (*((triton::uint32*)(this->q6)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S7:  (*((triton::uint32*)(this->q7)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S8:  (*((triton::uint32*)(this->q8)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S9:  (*((triton::uint32*)(this->q9)))  = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S10: (*((triton::uint32*)(this->q10))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S11: (*((triton::uint32*)(this->q11))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S12: (*((triton::uint32*)(this->q12))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S13: (*((triton::uint32*)(this->q13))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S14: (*((triton::uint32*)(this->q14))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S15: (*((triton::uint32*)(this->q15))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S16: (*((triton::uint32*)(this->q16))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S17: (*((triton::uint32*)(this->q17))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S18: (*((triton::uint32*)(this->q18))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S19: (*((triton::uint32*)(this->q19))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S20: (*((triton::uint32*)(this->q20))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S21: (*((triton::uint32*)(this->q21))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S22: (*((triton::uint32*)(this->q22))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S23: (*((triton::uint32*)(this->q23))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S24: (*((triton::uint32*)(this->q24))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S25: (*((triton::uint32*)(this->q25))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S26: (*((triton::uint32*)(this->q26))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S27: (*((triton::uint32*)(this->q27))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S28: (*((triton::uint32*)(this->q28))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S29: (*((triton::uint32*)(this->q29))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S30: (*((triton::uint32*)(this->q30))) = value.convert_to<triton::uint32>(); break;
-            case triton::arch::ID_REG_AARCH64_S31: (*((triton::uint32*)(this->q31))) = value.convert_to<triton::uint32>(); break;
+            case triton::arch::ID_REG_AARCH64_S0:  (*((triton::uint32*)(this->q0)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S1:  (*((triton::uint32*)(this->q1)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S2:  (*((triton::uint32*)(this->q2)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S3:  (*((triton::uint32*)(this->q3)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S4:  (*((triton::uint32*)(this->q4)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S5:  (*((triton::uint32*)(this->q5)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S6:  (*((triton::uint32*)(this->q6)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S7:  (*((triton::uint32*)(this->q7)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S8:  (*((triton::uint32*)(this->q8)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S9:  (*((triton::uint32*)(this->q9)))  = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S10: (*((triton::uint32*)(this->q10))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S11: (*((triton::uint32*)(this->q11))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S12: (*((triton::uint32*)(this->q12))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S13: (*((triton::uint32*)(this->q13))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S14: (*((triton::uint32*)(this->q14))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S15: (*((triton::uint32*)(this->q15))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S16: (*((triton::uint32*)(this->q16))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S17: (*((triton::uint32*)(this->q17))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S18: (*((triton::uint32*)(this->q18))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S19: (*((triton::uint32*)(this->q19))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S20: (*((triton::uint32*)(this->q20))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S21: (*((triton::uint32*)(this->q21))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S22: (*((triton::uint32*)(this->q22))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S23: (*((triton::uint32*)(this->q23))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S24: (*((triton::uint32*)(this->q24))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S25: (*((triton::uint32*)(this->q25))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S26: (*((triton::uint32*)(this->q26))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S27: (*((triton::uint32*)(this->q27))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S28: (*((triton::uint32*)(this->q28))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S29: (*((triton::uint32*)(this->q29))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S30: (*((triton::uint32*)(this->q30))) = static_cast<triton::uint32>(value); break;
+            case triton::arch::ID_REG_AARCH64_S31: (*((triton::uint32*)(this->q31))) = static_cast<triton::uint32>(value); break;
 
-            case triton::arch::ID_REG_AARCH64_H0:  (*((triton::uint16*)(this->q0)))  = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H1:  (*((triton::uint16*)(this->q1)))  = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H2:  (*((triton::uint16*)(this->q2)))  = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H3:  (*((triton::uint16*)(this->q3)))  = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H4:  (*((triton::uint16*)(this->q4)))  = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H5:  (*((triton::uint16*)(this->q5)))  = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H6:  (*((triton::uint16*)(this->q6)))  = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H7:  (*((triton::uint16*)(this->q7)))  = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H8:  (*((triton::uint16*)(this->q8)))  = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H9:  (*((triton::uint16*)(this->q9)))  = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H10: (*((triton::uint16*)(this->q10))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H11: (*((triton::uint16*)(this->q11))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H12: (*((triton::uint16*)(this->q12))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H13: (*((triton::uint16*)(this->q13))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H14: (*((triton::uint16*)(this->q14))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H15: (*((triton::uint16*)(this->q15))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H16: (*((triton::uint16*)(this->q16))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H17: (*((triton::uint16*)(this->q17))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H18: (*((triton::uint16*)(this->q18))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H19: (*((triton::uint16*)(this->q19))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H20: (*((triton::uint16*)(this->q20))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H21: (*((triton::uint16*)(this->q21))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H22: (*((triton::uint16*)(this->q22))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H23: (*((triton::uint16*)(this->q23))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H24: (*((triton::uint16*)(this->q24))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H25: (*((triton::uint16*)(this->q25))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H26: (*((triton::uint16*)(this->q26))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H27: (*((triton::uint16*)(this->q27))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H28: (*((triton::uint16*)(this->q28))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H29: (*((triton::uint16*)(this->q29))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H30: (*((triton::uint16*)(this->q30))) = value.convert_to<triton::uint16>(); break;
-            case triton::arch::ID_REG_AARCH64_H31: (*((triton::uint16*)(this->q31))) = value.convert_to<triton::uint16>(); break;
+            case triton::arch::ID_REG_AARCH64_H0:  (*((triton::uint16*)(this->q0)))  = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H1:  (*((triton::uint16*)(this->q1)))  = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H2:  (*((triton::uint16*)(this->q2)))  = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H3:  (*((triton::uint16*)(this->q3)))  = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H4:  (*((triton::uint16*)(this->q4)))  = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H5:  (*((triton::uint16*)(this->q5)))  = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H6:  (*((triton::uint16*)(this->q6)))  = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H7:  (*((triton::uint16*)(this->q7)))  = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H8:  (*((triton::uint16*)(this->q8)))  = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H9:  (*((triton::uint16*)(this->q9)))  = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H10: (*((triton::uint16*)(this->q10))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H11: (*((triton::uint16*)(this->q11))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H12: (*((triton::uint16*)(this->q12))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H13: (*((triton::uint16*)(this->q13))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H14: (*((triton::uint16*)(this->q14))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H15: (*((triton::uint16*)(this->q15))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H16: (*((triton::uint16*)(this->q16))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H17: (*((triton::uint16*)(this->q17))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H18: (*((triton::uint16*)(this->q18))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H19: (*((triton::uint16*)(this->q19))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H20: (*((triton::uint16*)(this->q20))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H21: (*((triton::uint16*)(this->q21))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H22: (*((triton::uint16*)(this->q22))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H23: (*((triton::uint16*)(this->q23))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H24: (*((triton::uint16*)(this->q24))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H25: (*((triton::uint16*)(this->q25))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H26: (*((triton::uint16*)(this->q26))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H27: (*((triton::uint16*)(this->q27))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H28: (*((triton::uint16*)(this->q28))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H29: (*((triton::uint16*)(this->q29))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H30: (*((triton::uint16*)(this->q30))) = static_cast<triton::uint16>(value); break;
+            case triton::arch::ID_REG_AARCH64_H31: (*((triton::uint16*)(this->q31))) = static_cast<triton::uint16>(value); break;
 
-            case triton::arch::ID_REG_AARCH64_B0:  (*((triton::uint8*)(this->q0)))  = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B1:  (*((triton::uint8*)(this->q1)))  = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B2:  (*((triton::uint8*)(this->q2)))  = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B3:  (*((triton::uint8*)(this->q3)))  = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B4:  (*((triton::uint8*)(this->q4)))  = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B5:  (*((triton::uint8*)(this->q5)))  = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B6:  (*((triton::uint8*)(this->q6)))  = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B7:  (*((triton::uint8*)(this->q7)))  = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B8:  (*((triton::uint8*)(this->q8)))  = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B9:  (*((triton::uint8*)(this->q9)))  = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B10: (*((triton::uint8*)(this->q10))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B11: (*((triton::uint8*)(this->q11))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B12: (*((triton::uint8*)(this->q12))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B13: (*((triton::uint8*)(this->q13))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B14: (*((triton::uint8*)(this->q14))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B15: (*((triton::uint8*)(this->q15))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B16: (*((triton::uint8*)(this->q16))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B17: (*((triton::uint8*)(this->q17))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B18: (*((triton::uint8*)(this->q18))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B19: (*((triton::uint8*)(this->q19))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B20: (*((triton::uint8*)(this->q20))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B21: (*((triton::uint8*)(this->q21))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B22: (*((triton::uint8*)(this->q22))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B23: (*((triton::uint8*)(this->q23))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B24: (*((triton::uint8*)(this->q24))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B25: (*((triton::uint8*)(this->q25))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B26: (*((triton::uint8*)(this->q26))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B27: (*((triton::uint8*)(this->q27))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B28: (*((triton::uint8*)(this->q28))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B29: (*((triton::uint8*)(this->q29))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B30: (*((triton::uint8*)(this->q30))) = value.convert_to<triton::uint8>(); break;
-            case triton::arch::ID_REG_AARCH64_B31: (*((triton::uint8*)(this->q31))) = value.convert_to<triton::uint8>(); break;
+            case triton::arch::ID_REG_AARCH64_B0:  (*((triton::uint8*)(this->q0)))  = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B1:  (*((triton::uint8*)(this->q1)))  = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B2:  (*((triton::uint8*)(this->q2)))  = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B3:  (*((triton::uint8*)(this->q3)))  = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B4:  (*((triton::uint8*)(this->q4)))  = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B5:  (*((triton::uint8*)(this->q5)))  = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B6:  (*((triton::uint8*)(this->q6)))  = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B7:  (*((triton::uint8*)(this->q7)))  = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B8:  (*((triton::uint8*)(this->q8)))  = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B9:  (*((triton::uint8*)(this->q9)))  = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B10: (*((triton::uint8*)(this->q10))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B11: (*((triton::uint8*)(this->q11))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B12: (*((triton::uint8*)(this->q12))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B13: (*((triton::uint8*)(this->q13))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B14: (*((triton::uint8*)(this->q14))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B15: (*((triton::uint8*)(this->q15))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B16: (*((triton::uint8*)(this->q16))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B17: (*((triton::uint8*)(this->q17))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B18: (*((triton::uint8*)(this->q18))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B19: (*((triton::uint8*)(this->q19))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B20: (*((triton::uint8*)(this->q20))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B21: (*((triton::uint8*)(this->q21))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B22: (*((triton::uint8*)(this->q22))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B23: (*((triton::uint8*)(this->q23))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B24: (*((triton::uint8*)(this->q24))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B25: (*((triton::uint8*)(this->q25))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B26: (*((triton::uint8*)(this->q26))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B27: (*((triton::uint8*)(this->q27))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B28: (*((triton::uint8*)(this->q28))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B29: (*((triton::uint8*)(this->q29))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B30: (*((triton::uint8*)(this->q30))) = static_cast<triton::uint8>(value); break;
+            case triton::arch::ID_REG_AARCH64_B31: (*((triton::uint8*)(this->q31))) = static_cast<triton::uint8>(value); break;
 
             default:
               throw triton::exceptions::Cpu("AArch64Cpu:setConcreteRegisterValue(): Invalid register.");

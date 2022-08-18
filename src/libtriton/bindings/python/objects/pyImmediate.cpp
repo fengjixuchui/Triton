@@ -8,8 +8,11 @@
 #include <triton/pythonObjects.hpp>
 #include <triton/pythonUtils.hpp>
 #include <triton/pythonXFunctions.hpp>
+#include <triton/coreUtils.hpp>
 #include <triton/exceptions.hpp>
 #include <triton/immediate.hpp>
+
+#include <iostream>
 
 
 
@@ -40,7 +43,7 @@ This object is used to represent an immediate.
 
 ~~~~~~~~~~~~~{.py}
 >>> ctxt.processing(inst)
-True
+0
 >>> print(inst)
 0x0: mov eax, 0x14
 
@@ -238,9 +241,7 @@ namespace triton {
 
       static PyObject* Immediate_str(PyObject* self) {
         try {
-          std::stringstream str;
-          str << PyImmediate_AsImmediate(self);
-          return PyStr_FromFormat("%s", str.str().c_str());
+          return PyStr_FromFormat("%s", triton::utils::toString(PyImmediate_AsImmediate(self)).c_str());
         }
         catch (const triton::exceptions::Exception& e) {
           return PyErr_Format(PyExc_TypeError, "%s", e.what());

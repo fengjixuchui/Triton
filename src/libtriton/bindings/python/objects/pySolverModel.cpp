@@ -8,8 +8,11 @@
 #include <triton/pythonObjects.hpp>
 #include <triton/pythonUtils.hpp>
 #include <triton/pythonXFunctions.hpp>
+#include <triton/coreUtils.hpp>
 #include <triton/exceptions.hpp>
 #include <triton/solverModel.hpp>
+
+#include <iostream>
 
 
 
@@ -37,7 +40,7 @@ This object is used to represent a model for an SMT solver.
 SymVar_0:64
 
 >>> ctxt.processing(inst)
-True
+0
 >>> print(inst)
 0x0: xor rax, 0x11223344
 
@@ -131,9 +134,7 @@ namespace triton {
 
       static PyObject* SolverModel_str(PyObject* self) {
         try {
-          std::stringstream str;
-          str << PySolverModel_AsSolverModel(self);
-          return PyStr_FromFormat("%s", str.str().c_str());
+          return PyStr_FromFormat("%s", triton::utils::toString(PySolverModel_AsSolverModel(self)).c_str());
         }
         catch (const triton::exceptions::Exception& e) {
           return PyErr_Format(PyExc_TypeError, "%s", e.what());

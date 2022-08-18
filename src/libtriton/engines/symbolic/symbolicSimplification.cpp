@@ -6,7 +6,12 @@
 */
 
 #include <list>
+#include <map>
+
+#include <triton/archEnums.hpp>
+#include <triton/context.hpp>
 #include <triton/exceptions.hpp>
+#include <triton/symbolicExpression.hpp>
 #include <triton/symbolicSimplification.hpp>
 
 
@@ -20,10 +25,10 @@
 
 Triton allows you to optimize your AST (See: \ref py_AstContext_page) just before the assignment to a register, a memory
 or a volatile symbolic expression. The record of a simplification pass is really straightforward. You have to record your simplification
-callback using the triton::API::addCallback() function. Your simplification callback must takes as parameters a triton::API and a
+callback using the triton::Context::addCallback() function. Your simplification callback must takes as parameters a triton::Context and a
 triton::ast::SharedAbstractNode. The callback must return a triton::ast::SharedAbstractNode. Then, your callback will be called before
 every symbolic assignment. Note that you can record several simplification callbacks or remove a specific callback using the
-triton::API::removeCallback() function.
+triton::Context::removeCallback() function.
 
 \subsection SMT_simplification_triton Simplification via Triton's rules
 <hr>
@@ -32,7 +37,7 @@ Below, a little example which replaces all \f$ A \oplus A \rightarrow A = 0\f$.
 
 ~~~~~~~~~~~~~{.cpp}
 // Rule: if (bvxor x x) -> (_ bv0 x_size)
-triton::ast::SharedAbstractNode xor_simplification(triton::API& ctx, const triton::ast::SharedAbstractNode& node) {
+triton::ast::SharedAbstractNode xor_simplification(triton::Context& ctx, const triton::ast::SharedAbstractNode& node) {
 
   if (node->getType() == triton::ast::BVXOR_NODE) {
     if (node->getChildren()[0]->equalTo(node->getChildren()[1]))
@@ -45,7 +50,7 @@ triton::ast::SharedAbstractNode xor_simplification(triton::API& ctx, const trito
 int main(int ac, const char *av[]) {
   ...
   // Record a simplification callback
-  api.addCallback(xor_simplification);
+  ctx.addCallback(xor_simplification);
   ...
 }
 ~~~~~~~~~~~~~
@@ -207,6 +212,72 @@ namespace triton {
         }
 
         return snode;
+      }
+
+
+      triton::arch::BasicBlock SymbolicSimplification::simplify(const triton::arch::BasicBlock& block, bool padding) const {
+        return this->deadStoreElimination(block, padding);
+      }
+
+
+      triton::arch::BasicBlock SymbolicSimplification::deadStoreElimination(const triton::arch::BasicBlock& block, bool padding) const {
+        std::unordered_map<triton::usize, SharedSymbolicExpression> lifetime;
+        std::map<triton::uint64, triton::arch::Instruction> instructions;
+        triton::arch::BasicBlock out;
+        triton::arch::BasicBlock in = block;
+
+        if (block.getSize() == 0)
+          return {};
+
+        /* Define a temporary Context */
+        triton::Context tmpctx(in.getInstructions()[0].getArchitecture());
+
+        /* Execute the block */
+        tmpctx.processing(in);
+
+        /* Get all symbolic registers that were written */
+        for (auto& reg : tmpctx.getSymbolicRegisters()) {
+          for (auto& item : tmpctx.sliceExpressions(reg.second)) {
+            lifetime[item.first] = item.second;
+          }
+        }
+
+        /* Get all symbolic memory cells that were written */
+        for (auto& mem : tmpctx.getSymbolicMemory()) {
+          for (auto& item : tmpctx.sliceExpressions(mem.second)) {
+            lifetime[item.first] = item.second;
+          }
+        }
+
+        /* Get back the origin assembly of expressions that still alive */
+        for (auto& se : lifetime) {
+          auto assembly = se.second->getDisassembly();
+          if (assembly.empty())
+            continue;
+          triton::uint64 addr = std::stoi(assembly, nullptr, 16);
+          for (auto& inst : in.getInstructions()) {
+            if (inst.getAddress() == addr) {
+              instructions[addr] = inst;
+              break;
+            }
+          }
+        }
+
+        /* Create a new block with sorted instructions */
+        auto lastaddr = in.getFirstAddress();
+        auto nop = tmpctx.getNopInstruction();
+        for (auto& item : instructions) {
+          if (padding) {
+            while (item.second.getAddress() > lastaddr) {
+              out.add(nop);
+              lastaddr += nop.getSize();
+            }
+          }
+          out.add(item.second);
+          lastaddr = item.second.getNextAddress();
+        }
+
+        return out;
       }
 
 

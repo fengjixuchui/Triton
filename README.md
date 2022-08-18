@@ -1,16 +1,21 @@
-<p align="center"><img width="50%" src="http://triton.quarkslab.com/files/triton2.png"/></p>
+<p align="center"><img width="50%" src="https://triton-library.github.io/files/triton2.png"/></p>
 
-**Triton** is a dynamic binary analysis library. It provides internal components like a **dynamic symbolic execution** engine,
-a **dynamic taint analysis** engine, **AST representation** of the **x86**, **x86-64**, **ARM32** and **AArch64** ISA semantic,
-an **expressions synthesis** engine, some **SMT simplification** passes, **SMT solver** interface to **Z3** and **Bitwuzla**
-and, the last but not least, **Python bindings**. Based on these components, you are able to build your program analysis tools,
+**Triton** is a dynamic binary analysis library. It provides internal components that allow you to build your program analysis tools,
 automate reverse engineering, perform software verification or just emulate code.
 
-<p align="center">
-    <img src="http://triton.quarkslab.com/files/triton_v09_architecture.svg" width="80%"/></br>
-    <img src="http://triton.quarkslab.com/files/triton_multi_os.png"/>
-</p>
+* Dynamic **symbolic** execution
+* Dynamic **taint** analysis
+* AST representation of the **x86**, **x86-64**, **ARM32** and **AArch64** ISA semantic
+* Expressions **synthesis**
+* SMT **simplification** passes
+* **Lifting** to **LLVM** as well as **Z3** and back
+* **SMT solver** interface to **Z3** and **Bitwuzla**
+* **C++** and **Python** API
 
+<p align="center">
+    <img src="https://triton-library.github.io/files/triton_v09_architecture.svg" width="80%"/></br>
+    <img src="https://triton-library.github.io/files/triton_multi_os.png"/>
+</p>
 
 As **Triton** is a kind of a part-time project, please, **don't blame us** if it is not fully reliable. [Open issues](https://github.com/JonathanSalwan/Triton/issues) or
 [pull requests](https://github.com/JonathanSalwan/Triton/pulls) are always better than trolling =). However, you can follow the development on twitter
@@ -49,8 +54,8 @@ As **Triton** is a kind of a part-time project, please, **don't blame us** if it
 # Quick start
 
 * [Installation](#install)
-* [Python API](http://triton.quarkslab.com/documentation/doxygen/py_triton_page.html)
-* [C++ API](https://triton.quarkslab.com/documentation/doxygen/annotated.html)
+* [Python API](https://triton-library.github.io/documentation/doxygen/py_triton_page.html)
+* [C++ API](https://triton-library.github.io/documentation/doxygen/annotated.html)
 * [Python Examples](https://github.com/JonathanSalwan/Triton/tree/master/src/examples/python)
 * [They already used Triton](#they-already-used-triton)
 
@@ -92,8 +97,8 @@ from triton import *
 Triton relies on the following dependencies:
 
 ```
-* libboost                   >= 1.68
 * libcapstone                >= 4.0.x   https://github.com/capstone-engine/capstone
+* libboost      (optional)   >= 1.68
 * libpython     (optional)   >= 3.6
 * libz3         (optional)   >= 4.6.0   https://github.com/Z3Prover/z3
 * libbitwuzla   (optional)   n/a        https://github.com/bitwuzla/bitwuzla
@@ -145,7 +150,7 @@ packages for Visual Studio 2012.
 
 # Contributors
 
-Triton is strongly powered by [Quarkslab](https://quarkslab.com) for years but also by several strong contributors:
+Triton is strongly powered by [Quarkslab](https://quarkslab.com) for years but also by several contributors:
 
 * [**Alberto Garcia Illera**](https://twitter.com/algillera) - Cruise Automation
 * [**Alexey Vishnyakov**](https://vishnya.xyz/) - ISP RAS
@@ -157,6 +162,7 @@ Triton is strongly powered by [Quarkslab](https://quarkslab.com) for years but a
 * [**Pierrick Brunet**](https://github.com/pbrunet) - Quarkslab
 * [**PixelRick**](https://github.com/PixelRick) - n/a
 * [**Romain Thomas**](https://twitter.com/rh0main) - Quarkslab
+* [**And many more**](https://github.com/JonathanSalwan/Triton/graphs/contributors)
 
 
 ## They already used Triton

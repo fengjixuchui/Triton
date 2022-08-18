@@ -265,13 +265,16 @@ namespace triton {
           TRITON_EXPORT std::unordered_map<triton::usize, SharedSymbolicExpression> getSymbolicExpressions(void) const;
 
           //! Returns all symbolic variables.
-          TRITON_EXPORT std::unordered_map<triton::usize, SharedSymbolicVariable> getSymbolicVariables(void) const;
+          TRITON_EXPORT std::map<triton::usize, SharedSymbolicVariable> getSymbolicVariables(void) const;
 
           //! Converts a symbolic expression to a symbolic variable. `symVarSize` must be in bits.
           TRITON_EXPORT SharedSymbolicVariable symbolizeExpression(triton::usize exprId, triton::uint32 symVarSize, const std::string& symVarAlias="");
 
           //! Converts a symbolic memory expression to a symbolic variable.
           TRITON_EXPORT SharedSymbolicVariable symbolizeMemory(const triton::arch::MemoryAccess& mem, const std::string& symVarAlias="");
+
+          //! Converts a symbolic memory area to 8-bits symbolic variables.
+          TRITON_EXPORT void symbolizeMemory(triton::uint64 addr, triton::usize size);
 
           //! Converts a symbolic register expression to a symbolic variable.
           TRITON_EXPORT SharedSymbolicVariable symbolizeRegister(const triton::arch::Register& reg, const std::string& symVarAlias="");
