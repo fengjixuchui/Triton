@@ -34,7 +34,7 @@ cd bitwuzla
 ./contrib/setup-cadical.sh
 ./contrib/setup-btor2tools.sh
 ./contrib/setup-symfpu.sh
-./configure.sh --shared --prefix $(pwd)/install
+CC=clang-11 CXX=clang++-11 ./configure.sh --shared --prefix $(pwd)/install
 cd build
 make
 make install

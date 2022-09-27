@@ -24,7 +24,7 @@ namespace triton {
                                      const triton::modes::SharedModes& modes,
                                      const triton::ast::SharedAstContext& astCtxt,
                                      triton::callbacks::Callbacks* callbacks)
-        : triton::engines::symbolic::SymbolicSimplification(callbacks),
+        : triton::engines::symbolic::SymbolicSimplification(architecture, callbacks),
           triton::engines::symbolic::PathManager(modes, astCtxt),
           astCtxt(astCtxt),
           modes(modes) {
@@ -569,9 +569,9 @@ namespace triton {
 
         /* Record the aligned symbolic variable for a symbolic optimization */
         if (this->modes->isModeEnabled(triton::modes::ALIGNED_MEMORY)) {
-          const SharedSymbolicExpression& se = this->newSymbolicExpression(symVarNode, MEMORY_EXPRESSION, "aligned Byte reference");
-          se->setOriginMemory(mem);
-          this->addAlignedMemory(memAddr, symVarSize, se);
+          const SharedSymbolicExpression& aligned = this->newSymbolicExpression(symVarNode, MEMORY_EXPRESSION, "Aligned optimization");
+          aligned->setOriginMemory(mem);
+          this->addAlignedMemory(memAddr, symVarSize, aligned);
         }
 
         /*  Split expression in bytes */
@@ -921,8 +921,11 @@ namespace triton {
 
         /* Record the aligned memory for a symbolic optimization */
         if (this->modes->isModeEnabled(triton::modes::ALIGNED_MEMORY)) {
-          const SharedSymbolicExpression& aligned = this->newSymbolicExpression(node, MEMORY_EXPRESSION, "Aligned Byte reference - " + comment);
+          const SharedSymbolicExpression& aligned = this->newSymbolicExpression(node, MEMORY_EXPRESSION, "Aligned optimization - " + comment);
+          aligned->setOriginMemory(mem);
           this->addAlignedMemory(address, writeSize, aligned);
+          /* Refresh the current id to not link the aligned expression to the instruction */
+          id = this->uniqueSymExprId;
         }
 
         /*
@@ -960,14 +963,11 @@ namespace triton {
           return this->addSymbolicExpressions(inst, id);
         }
 
-        /* Otherwise, we return the concatenation of all symbolic expressions */
-        tmp = this->astCtxt->concat(ret);
-
         /* Synchronize the concrete state */
-        this->architecture->setConcreteMemoryValue(mem, tmp->evaluate());
+        this->architecture->setConcreteMemoryValue(mem, node->evaluate());
 
-        se = this->newSymbolicExpression(tmp, MEMORY_EXPRESSION, "Temporary concatenation reference - " + comment);
-        se->setOriginMemory(triton::arch::MemoryAccess(address, mem.getSize()));
+        se = this->newSymbolicExpression(node, MEMORY_EXPRESSION, "Original memory access - " + comment);
+        se->setOriginMemory(mem);
 
         return this->addSymbolicExpressions(inst, id);
       }
